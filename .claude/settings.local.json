@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -v)",
+      "Bash(mariadb -uroot -e \"select version\\(\\);\")",
+      "Read(//Applications/ServBay/**)",
+      "Bash(php -m)",
+      "Bash(curl -sI https://cdnjs.cloudflare.com)",
+      "Bash(httpd -v)",
+      "Bash(mariadb -uroot -pServBay.dev -e \"select version\\(\\);\")",
+      "Bash(mariadb -uroot -pServBay.dev -e ' *)",
+      "Bash(mariadb -uperfectmaint -ppm_local_2026 -e \"show databases;\")",
+      "Bash(composer --version)",
+      "Bash(composer install *)",
+      "Bash(vendor/bin/phpunit --version)",
+      "Bash(bin/fetch-vendor-assets.sh)",
+      "Bash(node scripts/validate_palette.js \"#1F4E79,#7FA7CE\" --mode light)",
+      "Bash(node scripts/validate_palette.js \"#1F4E79,#6B9AC4\" --mode light)"
+    ]
+  }
+}
