@@ -1,0 +1,16 @@
+{
+  "name": "perfectmaint",
+  "private": true,
+  "description": "PerfectMaint – tests des modules JavaScript (node:test, sans dépendance)",
+  "scripts": {
+    "test": "node --test \"tests/js/*.test.js\"",
+    "screenshots": "node bin/screenshots.mjs",
+    "guide": "node bin/build-guide.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

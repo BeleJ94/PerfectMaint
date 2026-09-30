@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide utilisateur PerfectMaint</title>
+<style>
+  @font-face { font-family: Plex; src: url(../../public/assets/fonts/ibm-plex-sans-latin-400-normal.woff2) format('woff2'); font-weight: 400; }
+  @font-face { font-family: Plex; src: url(../../public/assets/fonts/ibm-plex-sans-latin-500-normal.woff2) format('woff2'); font-weight: 500; }
+  @font-face { font-family: Plex; src: url(../../public/assets/fonts/ibm-plex-sans-latin-600-normal.woff2) format('woff2'); font-weight: 600 700; }
+  :root {
+    --navy: #1F4E79; --navy-dark: #163A5C; --accent: #E0662B; --soft: #E8EEF4;
+    --text: #1B2430; --muted: #5B6573; --border: #D9DEE5; --bg: #F5F6F8;
+    --ok: #1E7F4F; --ok-bg: #E6F4EC; --warn: #9A5B00; --warn-bg: #FDF1DD; --bad: #B42318; --bad-bg: #FDECEA;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 10.5pt; }
+  body { margin: 0; font-family: Plex, "Segoe UI", Arial, sans-serif; color: var(--text); background: #fff; line-height: 1.55; }
+  main { max-width: 820px; margin: 0 auto; padding: 0 40px 60px; }
+  h1, h2, h3, h4 { color: var(--navy-dark); line-height: 1.25; font-weight: 600; }
+  h2.part { font-size: 2rem; margin: 0 0 .3em; padding-top: 12px; }
+  .part-head { break-before: page; padding: 28px 0 18px; margin-bottom: 20px; border-bottom: 3px solid var(--navy); }
+  .part-head .kicker { color: var(--accent); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: .8rem; }
+  .part-head p { color: var(--muted); margin: .2em 0 0; }
+  h3 { font-size: 1.35rem; margin: 1.8em 0 .5em; padding-bottom: .25em; border-bottom: 1px solid var(--border); break-after: avoid; }
+  h4 { font-size: 1.05rem; margin: 1.3em 0 .4em; break-after: avoid; }
+  p { margin: .5em 0; }
+  a { color: var(--navy); }
+  strong { font-weight: 600; }
+  code, kbd { font-family: Consolas, monospace; font-size: .9em; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; }
+
+  /* Couverture */
+  .cover { height: 100vh; min-height: 1000px; display: flex; flex-direction: column; justify-content: space-between; padding: 70px 70px 60px;
+    background: linear-gradient(160deg, var(--navy-dark) 0%, var(--navy) 60%, #2A6399 100%); color: #fff; break-after: page; }
+  .cover .brand { font-size: 1.1rem; font-weight: 600; letter-spacing: .04em; opacity: .9; }
+  .cover .brand span { display: block; font-weight: 400; font-size: .85rem; opacity: .8; }
+  .cover h1 { color: #fff; font-size: 3.4rem; margin: 0 0 .2em; }
+  .cover .sub { font-size: 1.3rem; opacity: .9; max-width: 32em; }
+  .cover .bar { width: 90px; height: 5px; background: var(--accent); margin: 26px 0; border-radius: 3px; }
+  .cover .sites { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
+  .cover .sites span { border: 1px solid rgba(255,255,255,.4); border-radius: 99px; padding: 3px 14px; font-size: .85rem; }
+  .cover .meta { display: flex; justify-content: space-between; font-size: .85rem; opacity: .85; border-top: 1px solid rgba(255,255,255,.25); padding-top: 18px; }
+
+  /* Éditeur */
+  .colophon { break-after: page; padding-top: 30px; }
+  .colophon h2 { font-size: 1.8rem; border-bottom: 3px solid var(--navy); padding-bottom: 10px; }
+  .colophon__card { border: 1px solid var(--border); border-left: 5px solid var(--accent); border-radius: 10px; padding: 22px 26px; margin: 24px 0; background: var(--bg); }
+  .colophon__name { font-size: 1.6rem; font-weight: 700; color: var(--navy-dark); letter-spacing: .03em; }
+  .colophon dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 16px; margin: 16px 0 0; }
+  .colophon dt { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; padding-top: 2px; }
+  .colophon dd { margin: 0; font-weight: 500; }
+  .colophon__legal { color: var(--muted); font-size: .9rem; margin-top: 24px; }
+
+  /* Sommaire */
+  .toc { break-after: page; padding-top: 30px; }
+  .toc h2 { font-size: 1.8rem; border-bottom: 3px solid var(--navy); padding-bottom: 10px; }
+  .toc ol { list-style: none; padding: 0; margin: 0; }
+  .toc > ol > li { margin: 14px 0 4px; font-weight: 600; color: var(--navy-dark); }
+  .toc > ol > li > ol > li { font-weight: 400; color: var(--text); padding: 3px 0 3px 18px; border-bottom: 1px dotted var(--border); }
+  .toc a { text-decoration: none; color: inherit; }
+
+  /* Figures */
+  figure { margin: 16px 0 22px; break-inside: avoid; }
+  figure img { display: block; width: 100%; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 14px rgba(22, 58, 92, .10); }
+  figure.mobile img { width: 46%; margin: 0 auto; border-radius: 18px; }
+  figure.tall img { max-height: 900px; object-fit: cover; object-position: top; }
+  figcaption { font-size: .82rem; color: var(--muted); margin-top: 7px; text-align: center; }
+  figcaption b { color: var(--navy); }
+
+  /* Étapes */
+  ol.steps { counter-reset: s; list-style: none; padding: 0; margin: .8em 0; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 2px 0 8px 40px; break-inside: avoid; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--navy); color: #fff; font-weight: 600; font-size: .85rem; display: flex; align-items: center; justify-content: center; }
+
+  /* Fiche procédure */
+  .proc { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+  .proc div { background: var(--bg); border-radius: 8px; padding: 9px 13px; font-size: .92rem; }
+  .proc b { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+
+  /* Encadrés */
+  .note { border-left: 4px solid var(--navy); background: var(--soft); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; break-inside: avoid; }
+  .note.tip { border-color: var(--ok); background: var(--ok-bg); }
+  .note.warn { border-color: var(--accent); background: var(--warn-bg); }
+  .note.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .note > b:first-child { display: block; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
+  .note.tip > b:first-child { color: var(--ok); } .note.warn > b:first-child { color: var(--warn); } .note.bad > b:first-child { color: var(--bad); }
+
+  /* Tableaux */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: .9rem; break-inside: avoid; }
+  th { background: var(--navy); color: #fff; text-align: left; font-weight: 600; padding: 7px 10px; font-size: .8rem; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFBFC; }
+  .y { color: var(--ok); font-weight: 600; text-align: center; } .n { color: #B9C0C9; text-align: center; }
+  .badge { display: inline-block; border-radius: 99px; padding: 0 9px; font-size: .8rem; font-weight: 500; white-space: nowrap; }
+  .b-ok { background: var(--ok-bg); color: var(--ok); } .b-bad { background: var(--bad-bg); color: var(--bad); }
+  .b-mnt { background: var(--soft); color: var(--navy); } .b-wait { background: var(--warn-bg); color: var(--warn); } .b-off { background: #ECEEF1; color: #4A5260; }
+
+  dl.gloss { display: grid; grid-template-columns: 170px 1fr; gap: 6px 16px; }
+  dl.gloss dt { font-weight: 600; color: var(--navy-dark); } dl.gloss dd { margin: 0; }
+
+  @page { size: A4; margin: 16mm 14mm 18mm; }
+  @page :first { margin: 0; }
+  @media print {
+    main { max-width: none; padding: 0; }
+    .cover { height: 297mm; min-height: 0; }
+    a { text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="brand">PerfectMaint<span>Perfect Logistics</span></div>
+  <div>
+    <h1>Guide utilisateur</h1>
+    <div class="bar"></div>
+    <p class="sub">Gestion de la maintenance du parc d'engins miniers et de bus : pannes, interventions, préventif, pièces et pilotage.</p>
+    <div class="sites"><span>CHEMAF</span><span>KAMAO</span><span>METALKOL</span><span>KINGAKILA</span><span>SICOMINES</span></div>
+  </div>
+  <div class="meta"><span>Édité et rédigé par <strong>BELEJ-CONSULTING</strong> · www.belej-consulting.com</span><span>Version 1.0 — septembre 2026</span></div>
+</section>
+
+<main>
+
+<section class="colophon">
+  <h2>Éditeur et rédaction</h2>
+  <div class="colophon__card">
+    <div class="colophon__name">BELEJ-CONSULTING</div>
+    <p>Éditeur du logiciel <strong>PerfectMaint</strong> et rédacteur du présent guide.</p>
+    <dl>
+      <dt>Téléphone</dt><dd>+243 834 700 803<br>+243 999 994 169</dd>
+      <dt>E-mail</dt><dd><a href="mailto:b2b@belej-consulting.com">b2b@belej-consulting.com</a></dd>
+      <dt>Site web</dt><dd><a href="https://www.belej-consulting.com">www.belej-consulting.com</a></dd>
+    </dl>
+  </div>
+  <table>
+    <tr><th>Document</th><th>Version</th><th>Date</th><th>Client</th></tr>
+    <tr><td>Guide utilisateur PerfectMaint</td><td>1.0</td><td>Septembre 2026</td><td>Perfect Logistics</td></tr>
+  </table>
+  <p class="colophon__legal">Pour toute question sur l'utilisation du logiciel, une demande d'évolution ou un signalement d'anomalie, contactez BELEJ-CONSULTING aux coordonnées ci-dessus. Les écrans reproduits dans ce guide illustrent des données de démonstration.</p>
+</section>
+
+<nav class="toc">
+  <h2>Sommaire</h2>
+  <ol>
+    <li><a href="#p1">1. Prise en main</a>
+      <ol><li><a href="#s11">1.1 Présentation et profils</a></li><li><a href="#s12">1.2 Se connecter</a></li><li><a href="#s13">1.3 Se repérer dans l'écran</a></li><li><a href="#s14">1.4 Travailler avec les listes</a></li></ol></li>
+    <li><a href="#p2">2. Technicien : écrans terrain</a>
+      <ol><li><a href="#s21">2.1 Ma file de travail</a></li><li><a href="#s22">2.2 Déclarer une panne</a></li><li><a href="#s23">2.3 Traiter un OT sur le terrain</a></li><li><a href="#s24">2.4 Relevés de compteurs</a></li></ol></li>
+    <li><a href="#p3">3. Responsable maintenance</a>
+      <ol><li><a href="#s31">3.1 Le parc d'engins</a></li><li><a href="#s32">3.2 La fiche engin</a></li><li><a href="#s33">3.3 Les ordres de travail</a></li><li><a href="#s34">3.4 Maintenance préventive</a></li><li><a href="#s35">3.5 Pièces, pneus et lubrifiants</a></li><li><a href="#s36">3.6 Besoins achats</a></li><li><a href="#s37">3.7 Alertes, planning et fenêtre site</a></li><li><a href="#s38">3.8 Équipes et personnel</a></li><li><a href="#s39">3.9 Référentiel marques et modèles</a></li></ol></li>
+    <li><a href="#p4">4. Direction et consultation</a>
+      <ol><li><a href="#s41">4.1 Rapports de direction</a></li><li><a href="#s42">4.2 Profil Consultation</a></li></ol></li>
+    <li><a href="#p5">5. Administration</a>
+      <ol><li><a href="#s51">5.1 Sites</a></li><li><a href="#s52">5.2 Utilisateurs</a></li><li><a href="#s53">5.3 Journal d'activité</a></li></ol></li>
+    <li><a href="#p6">Annexes</a>
+      <ol><li><a href="#a1">A. Droits par profil</a></li><li><a href="#a2">B. Cycle de vie d'un OT</a></li><li><a href="#a3">C. Glossaire</a></li><li><a href="#a4">D. Questions fréquentes</a></li></ol></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ PARTIE 1 -->
+<header class="part-head" id="p1">
+  <div class="kicker">Partie 1</div>
+  <h2 class="part">Prise en main</h2>
+  <p>Pour tous les utilisateurs : connexion, repères à l'écran, utilisation des listes et des exports.</p>
+</header>
+
+<h3 id="s11">1.1 Présentation et profils</h3>
+<p>PerfectMaint centralise la maintenance du parc de Perfect Logistics : engins de terrassement, tombereaux articulés (ADT) et camions bennes sur <strong>CHEMAF</strong>, <strong>KAMAO</strong> et <strong>METALKOL</strong> ; bus sur <strong>KINGAKILA</strong> et <strong>SICOMINES</strong>. L'application suit chaque engin, ses pannes et interventions, son entretien préventif, les pièces consommées et le stock, puis restitue des indicateurs de pilotage.</p>
+<p>Chaque utilisateur dispose d'un <strong>profil</strong>, qui détermine ce qu'il peut faire, et d'un <strong>périmètre</strong> de sites, qui détermine ce qu'il voit.</p>
+<table>
+  <tr><th>Profil</th><th>Rôle principal</th></tr>
+  <tr><td><strong>Technicien</strong></td><td>Déclare les pannes, exécute les ordres de travail, saisit pièces, relevés et photos, principalement depuis le mode terrain sur mobile.</td></tr>
+  <tr><td><strong>Responsable maintenance</strong></td><td>Organise la maintenance : parc, ordres de travail, préventif, stock, achats, équipes, planning et rapports.</td></tr>
+  <tr><td><strong>Consultation</strong></td><td>Accès en lecture seule : tableaux de bord, listes et rapports de direction.</td></tr>
+  <tr><td><strong>Administrateur</strong></td><td>Tous les droits, plus la gestion des sites, des utilisateurs et l'accès au journal d'activité.</td></tr>
+</table>
+<div class="note"><b>Périmètre de sites</b>Un utilisateur ne voit que les engins, OT, stocks et personnes des sites qui lui sont attribués. Si un élément semble « manquer », vérifiez d'abord le site sélectionné, puis vos sites attribués auprès d'un administrateur. Le détail des droits figure en <a href="#a1">annexe A</a>.</div>
+
+<h3 id="s12">1.2 Se connecter</h3>
+<div class="proc"><div><b>Objectif</b>Accéder à l'application</div><div><b>Qui</b>Tous les profils</div></div>
+<ol class="steps">
+  <li>Ouvrez l'adresse de PerfectMaint communiquée par votre service informatique.</li>
+  <li>Choisissez la langue en haut de la carte de connexion : <strong>FR</strong> ou <strong>EN</strong>.</li>
+  <li>Saisissez votre <strong>e-mail</strong> professionnel et votre <strong>mot de passe</strong>, puis cliquez sur <strong>Se connecter</strong>.</li>
+</ol>
+<figure><img src="images/fr/01-login.png" alt="Écran de connexion"><figcaption><b>Figure 1.</b> Écran de connexion.</figcaption></figure>
+<div class="note warn"><b>Sécurité</b>Après <strong>5 tentatives</strong> erronées, le compte est verrouillé <strong>15 minutes</strong>. Ne partagez jamais votre mot de passe ; toutes les actions sont enregistrées à votre nom.</div>
+<p>Pour vous déconnecter, utilisez l'icône de sortie en haut à droite de l'écran.</p>
+
+<h3 id="s13">1.3 Se repérer dans l'écran</h3>
+<p>L'écran principal se compose de trois zones :</p>
+<ul>
+  <li><strong>Le menu latéral</strong> (à gauche), regroupé en rubriques : <em>Pilotage</em>, <em>Maintenance</em>, <em>Parc &amp; équipes</em>, <em>Magasin</em> et <em>Paramètres</em>. Les pastilles rouges signalent les éléments à traiter (OT en retard, préventifs à échéance, pièces à commander…).</li>
+  <li><strong>Le sélecteur « Site de travail »</strong> (en haut du menu) : il limite l'ensemble des écrans à un site. Choisissez <em>Tous les sites</em> pour une vue consolidée.</li>
+  <li><strong>La barre supérieure</strong> : notifications (cloche), langue FR / EN, votre nom et votre profil, déconnexion. Le bouton <strong>Mode terrain</strong>, en bas du menu, bascule vers l'interface mobile.</li>
+</ul>
+<figure><img src="images/fr/02-dashboard.png" alt="Tableau de bord"><figcaption><b>Figure 2.</b> Tableau de bord : indicateurs clés, disponibilité par site, activité hebdomadaire et état du parc.</figcaption></figure>
+<h4>Le tableau de bord</h4>
+<p>La première ligne présente les indicateurs essentiels : <strong>disponibilité du parc</strong>, engins en panne, OT en cours et en retard, préventifs à échéance, pièces sous le minimum et temps moyen de réparation (MTTR). En dessous, une carte par site donne sa disponibilité et ses OT ouverts, puis deux graphiques montrent les OT créés par semaine et l'état du parc.</p>
+<div class="note tip"><b>Astuce</b>Chaque indicateur et chaque graphique est <strong>cliquable</strong> : une fenêtre de détail s'ouvre avec la liste correspondante, des filtres rapides, la recherche et l'export Excel / PDF.</div>
+<figure><img src="images/fr/03-dashboard-drill.png" alt="Fenêtre de détail"><figcaption><b>Figure 3.</b> Fenêtre de détail ouverte depuis l'indicateur « Disponibilité du parc », avec filtres par statut et par site.</figcaption></figure>
+
+<h3 id="s14">1.4 Travailler avec les listes</h3>
+<p>Toutes les listes (engins, OT, préventif, pièces, personnel…) fonctionnent de la même façon.</p>
+<figure><img src="images/fr/04-list-filters.png" alt="Liste avec filtres"><figcaption><b>Figure 4.</b> Liste des ordres de travail : la barre de filtres est encadrée.</figcaption></figure>
+<ul>
+  <li><strong>Filtres</strong> : chaque choix recharge immédiatement la liste. Le nombre de filtres actifs est affiché à droite, avec le bouton <strong>Réinitialiser</strong>.</li>
+  <li><strong>Recherche</strong> : le champ « Rechercher… » filtre sur toutes les colonnes textuelles.</li>
+  <li><strong>Tri</strong> : cliquez sur l'en-tête d'une colonne ; un second clic inverse l'ordre.</li>
+  <li><strong>Pagination</strong> : 15 lignes par page par défaut, modifiable (25, 50, 100).</li>
+  <li><strong>Ouvrir une fiche</strong> : cliquez sur une ligne.</li>
+  <li><strong>Exporter</strong> : les boutons <strong>Excel</strong> et <strong>PDF</strong> exportent toutes les lignes correspondant aux filtres et au tri en cours, pas seulement la page affichée.</li>
+</ul>
+
+<!-- ============================================================ PARTIE 2 -->
+<header class="part-head" id="p2">
+  <div class="kicker">Partie 2</div>
+  <h2 class="part">Technicien : écrans terrain</h2>
+  <p>Le mode terrain est conçu pour le téléphone : gros boutons, saisie rapide, uniquement l'essentiel.</p>
+</header>
+
+<h3 id="s21">2.1 Ma file de travail</h3>
+<div class="proc"><div><b>Objectif</b>Voir les interventions à réaliser</div><div><b>Qui</b>Technicien, responsable</div></div>
+<p>Depuis le menu, touchez <strong>Mode terrain</strong>. L'écran d'accueil propose de déclarer une panne et affiche <strong>ma file de travail</strong> : les OT ouverts de vos sites qui vous sont assignés, ou qui ne sont encore assignés à personne.</p>
+<figure class="mobile"><img src="images/fr/10-field-queue.png" alt="File de travail terrain"><figcaption><b>Figure 5.</b> Accueil du mode terrain et file de travail.</figcaption></figure>
+
+<h3 id="s22">2.2 Déclarer une panne</h3>
+<div class="proc"><div><b>Objectif</b>Signaler une panne et créer l'OT</div><div><b>Qui</b>Technicien, responsable, administrateur</div></div>
+<ol class="steps">
+  <li>Touchez <strong>Déclarer une panne</strong>.</li>
+  <li>Sélectionnez l'<strong>engin</strong> ; la recherche accepte le code (ex. <code>KAM-CHG-05</code>) ou le nom.</li>
+  <li>Donnez un <strong>titre</strong> court et décrivez les symptômes constatés.</li>
+  <li>Cochez <strong>Engin immobilisé</strong> si l'engin ne peut plus travailler.</li>
+  <li>Validez.</li>
+</ol>
+<figure class="mobile"><img src="images/fr/11-field-declare.png" alt="Déclaration de panne"><figcaption><b>Figure 6.</b> Déclaration d'une panne sur mobile.</figcaption></figure>
+<div class="note"><b>Ce qui se passe automatiquement</b>L'OT reçoit une référence (<code>OT-2026-00027</code>…). Si l'engin est déclaré immobilisé, son état passe à <span class="badge b-bad">En panne</span>. Le conducteur en poste sur l'engin et les compteurs sont enregistrés au moment du signalement.</div>
+
+<h3 id="s23">2.3 Traiter un OT sur le terrain</h3>
+<div class="proc"><div><b>Objectif</b>Réaliser et clôturer l'intervention</div><div><b>Qui</b>Technicien (OT assignés ou non assignés), responsable</div></div>
+<figure class="mobile"><img src="images/fr/12-field-wo.png" alt="OT sur mobile"><figcaption><b>Figure 7.</b> Fiche OT en mode terrain : pièces, intervenants, remarques et actions.</figcaption></figure>
+<ol class="steps">
+  <li>Touchez l'OT dans votre file, puis <strong>Démarrer</strong> : l'OT vous est attribué et l'engin passe <span class="badge b-mnt">En maintenance</span>.</li>
+  <li>Pour chaque pièce utilisée, renseignez <strong>Consommer une pièce</strong> et la quantité : le stock du site est déduit immédiatement.</li>
+  <li>Ajoutez les <strong>intervenants</strong> et leur temps en minutes (les minutes s'additionnent à celles déjà saisies).</li>
+  <li>Laissez une <strong>remarque</strong> : constat, diagnostic, recommandation.</li>
+  <li>S'il manque une pièce, touchez <strong>En attente de pièce</strong> ; l'engin passe <span class="badge b-wait">Attente pièce</span>. Reprenez ensuite l'OT pour le poursuivre.</li>
+  <li>Une fois le travail terminé, touchez <strong>Terminer</strong> et indiquez la <strong>cause de panne</strong>.</li>
+</ol>
+<div class="note warn"><b>Stock</b>Une consommation est refusée si le stock du site est insuffisant : le stock ne peut jamais devenir négatif. Prévenez le magasin ou le responsable.</div>
+
+<h3 id="s24">2.4 Relevés de compteurs, appoints et photos</h3>
+<p>Depuis la fiche d'un engin (voir <a href="#s32">3.2</a>), le technicien peut :</p>
+<ul>
+  <li><strong>Saisir un relevé</strong> d'heures moteur ou de kilomètres. Un compteur ne peut pas diminuer : une valeur inférieure au dernier relevé est refusée.</li>
+  <li><strong>Enregistrer un appoint ou une vidange</strong> de lubrifiant, qui sort la quantité du stock du site.</li>
+  <li><strong>Ajouter une photo</strong> ; elle est redimensionnée automatiquement avant l'envoi, ce qui ménage la connexion mobile.</li>
+</ul>
+<figure><img src="images/fr/22-equipment-reading.png" alt="Saisie d'un relevé"><figcaption><b>Figure 8.</b> Saisie d'un relevé de compteur depuis la fiche engin.</figcaption></figure>
+
+<!-- ============================================================ PARTIE 3 -->
+<header class="part-head" id="p3">
+  <div class="kicker">Partie 3</div>
+  <h2 class="part">Responsable maintenance</h2>
+  <p>Organiser le parc, les interventions, le préventif, le stock et les équipes.</p>
+</header>
+
+<h3 id="s31">3.1 Le parc d'engins</h3>
+<p>Le menu <strong>Engins</strong> liste le parc de vos sites. Filtrez par site, statut ou catégorie ; la colonne <em>OT ouverts</em> signale les engins en cours d'intervention.</p>
+<figure><img src="images/fr/20-equipment-list.png" alt="Liste des engins"><figcaption><b>Figure 9.</b> Liste du parc d'engins.</figcaption></figure>
+<table>
+  <tr><th>Statut</th><th>Signification</th></tr>
+  <tr><td><span class="badge b-ok">Disponible</span></td><td>L'engin peut travailler.</td></tr>
+  <tr><td><span class="badge b-bad">En panne</span></td><td>OT ouvert avec engin immobilisé, non encore démarré.</td></tr>
+  <tr><td><span class="badge b-mnt">En maintenance</span></td><td>Intervention en cours.</td></tr>
+  <tr><td><span class="badge b-wait">Attente pièce</span></td><td>Intervention suspendue faute de pièce.</td></tr>
+  <tr><td><span class="badge b-off">Immobilisé</span></td><td>Décision administrative ; ne change que manuellement.</td></tr>
+</table>
+
+<h3 id="s32">3.2 La fiche engin</h3>
+<p>La fiche réunit tout ce qui concerne un engin : identité (châssis, plaque, marque et modèle), compteurs, contrat ou location, photos, équipage affecté, pièces compatibles avec le stock du site, OT récents, appoints de fluides, plans préventifs et historique des statuts.</p>
+<figure class="tall"><img src="images/fr/21-equipment-show.png" alt="Fiche engin"><figcaption><b>Figure 10.</b> Fiche engin (partie haute).</figcaption></figure>
+<h4>Changer le statut manuellement</h4>
+<p>Le menu <strong>…</strong> en haut de la fiche propose <strong>Changer l'état</strong>. On l'utilise notamment pour <span class="badge b-off">Immobilisé</span>, une décision administrative que les OT ne modifient pas.</p>
+<figure><img src="images/fr/23-equipment-status.png" alt="Changement de statut"><figcaption><b>Figure 11.</b> Changement manuel de statut.</figcaption></figure>
+<h4>Affecter un conducteur</h4>
+<p>Dans la carte <strong>Conducteurs &amp; opérateurs</strong>, cliquez sur <strong>Affecter</strong>, choisissez la personne et le shift. Un engin ne peut avoir qu'un conducteur par shift ; ce conducteur est automatiquement enregistré sur les pannes déclarées pendant son poste.</p>
+<figure><img src="images/fr/24-equipment-assign.png" alt="Affectation"><figcaption><b>Figure 12.</b> Affectation d'un conducteur à l'engin.</figcaption></figure>
+<h4>Créer ou modifier un engin</h4>
+<p>Depuis la liste, <strong>Nouvel engin</strong>. Le choix du <strong>modèle</strong> impose la marque et la catégorie, ce qui garantit un parc homogène et des statistiques fiables par modèle.</p>
+<figure class="tall"><img src="images/fr/25-equipment-form.png" alt="Formulaire engin"><figcaption><b>Figure 13.</b> Formulaire de création d'un engin.</figcaption></figure>
+
+<h3 id="s33">3.3 Les ordres de travail</h3>
+<p>Le menu <strong>Ordres de travail</strong> liste les OT, par défaut ceux qui ne sont pas clôturés. Filtrez par site, statut, type (correctif / préventif), priorité, ou cochez <em>Mes OT</em>.</p>
+<figure><img src="images/fr/30-wo-list.png" alt="Liste des OT"><figcaption><b>Figure 14.</b> Liste des ordres de travail.</figcaption></figure>
+<h4>Créer un OT</h4>
+<ol class="steps">
+  <li>Cliquez sur <strong>Nouvel ordre de travail</strong>.</li>
+  <li>Choisissez l'engin, saisissez le titre et la description.</li>
+  <li>Précisez le <strong>type</strong>, la <strong>priorité</strong> (basse, normale, haute, critique), l'<strong>échéance</strong> et, si besoin, l'intervenant.</li>
+  <li>Cochez <strong>Engin immobilisé</strong> si nécessaire, puis enregistrez.</li>
+</ol>
+<figure class="tall"><img src="images/fr/31-wo-create.png" alt="Création d'OT"><figcaption><b>Figure 15.</b> Création d'un ordre de travail.</figcaption></figure>
+<h4>La fiche OT</h4>
+<p>La fiche présente les actions disponibles selon le statut, les informations clés (conducteur et compteurs au signalement, intervenant, échéance, coût des pièces), les intervenants et leur temps, les pièces consommées, les remarques et l'historique complet des modifications. Le bouton <strong>Bon de travail</strong> produit une version imprimable.</p>
+<figure class="tall"><img src="images/fr/32-wo-show.png" alt="Fiche OT"><figcaption><b>Figure 16.</b> Fiche d'un ordre de travail en cours.</figcaption></figure>
+<h4>Clôturer un OT</h4>
+<p><strong>Terminer</strong> ouvre une fenêtre où la <strong>cause de panne</strong> est obligatoire : usure normale, mauvaise utilisation, défaut de maintenance, accident / choc, défaillance composant, cause externe ou indéterminée. Cette information alimente les rapports et les alertes.</p>
+<figure><img src="images/fr/33-wo-done.png" alt="Clôture d'OT"><figcaption><b>Figure 17.</b> Clôture d'un OT avec la cause de panne.</figcaption></figure>
+<div class="note"><b>Annulation</b>Seuls les responsables et les administrateurs peuvent <strong>annuler</strong> un OT. Une confirmation est demandée. Le cycle de vie complet figure en <a href="#a2">annexe B</a>.</div>
+
+<h3 id="s34">3.4 Maintenance préventive</h3>
+<p>Un plan préventif définit un entretien récurrent sur un engin, selon un intervalle en <strong>jours</strong>, en <strong>heures moteur</strong>, ou les deux ; la première échéance atteinte déclenche l'entretien.</p>
+<figure><img src="images/fr/40-preventive-list.png" alt="Plans préventifs"><figcaption><b>Figure 18.</b> Liste des plans préventifs et de leurs échéances.</figcaption></figure>
+<ol class="steps">
+  <li>Cliquez sur <strong>Nouveau plan préventif</strong>, choisissez l'engin et donnez un titre (ex. « Révision 500 h »).</li>
+  <li>Indiquez les intervalles et les instructions (points de contrôle).</li>
+  <li>Renseignez la date de dernière réalisation pour calculer la prochaine échéance.</li>
+</ol>
+<figure class="tall"><img src="images/fr/41-preventive-form.png" alt="Formulaire préventif"><figcaption><b>Figure 19.</b> Création d'un plan préventif.</figcaption></figure>
+<div class="note tip"><b>Génération des OT</b>Chaque jour à 5 h, les OT préventifs arrivés à échéance sont créés automatiquement. Le bouton <strong>Générer les OT à échéance</strong> permet de le faire à la demande. Un plan qui a déjà un OT ouvert est marqué <em>Planifié</em> et n'en crée pas de second.</div>
+
+<h3 id="s35">3.5 Pièces, pneus et lubrifiants</h3>
+<p>Le menu <strong>Pièces &amp; consommables</strong> regroupe les pièces, pneus, lubrifiants, filtres, consommables et le carburant. Filtrez par type, par pièces d'usure ou par articles <em>sous le minimum</em>.</p>
+<figure><img src="images/fr/50-parts-list.png" alt="Liste des pièces"><figcaption><b>Figure 20.</b> Catalogue des pièces et consommables.</figcaption></figure>
+<p>La fiche pièce affiche le <strong>stock par site</strong>, le seuil minimum et l'emplacement. Le bouton <strong>Mouvement</strong> enregistre une entrée ou un ajustement d'inventaire ; les réglages permettent de modifier le minimum et l'emplacement. On y trouve aussi l'historique des remplacements, avec les compteurs de l'engin à chaque remplacement.</p>
+<figure class="tall"><img src="images/fr/51-parts-show.png" alt="Fiche pièce"><figcaption><b>Figure 21.</b> Fiche d'une pièce : stock par site et historique.</figcaption></figure>
+<div class="note"><b>Compatibilité et durée de vie</b>Chaque pièce peut être rattachée aux modèles d'engins compatibles et porter une durée de vie attendue (heures ou km). Ces données alimentent les alertes d'usure prématurée.</div>
+
+<h3 id="s36">3.6 Besoins achats</h3>
+<p>Le menu <strong>Besoins achats</strong> calcule pour chaque article et chaque site la consommation mensuelle, la couverture en jours, un niveau de stock et la <strong>quantité à commander</strong>.</p>
+<figure><img src="images/fr/52-procurement.png" alt="Besoins achats"><figcaption><b>Figure 22.</b> Besoins achats, triés par urgence.</figcaption></figure>
+<table>
+  <tr><th>Élément</th><th>Règle de calcul</th></tr>
+  <tr><td>Consommation mensuelle</td><td>Consommation des 90 derniers jours ÷ 3</td></tr>
+  <tr><td>Stock cible</td><td>Le plus grand de : 2 × stock minimum, ou 2 mois de consommation</td></tr>
+  <tr><td>Quantité à commander</td><td>Stock cible − stock actuel</td></tr>
+  <tr><td>Niveau</td><td><span class="badge b-bad">Rupture</span> <span class="badge b-wait">Sous le minimum</span> <span class="badge b-mnt">À surveiller</span> <span class="badge b-ok">Suffisant</span></td></tr>
+</table>
+<p>Exportez la liste en <strong>Excel</strong> ou <strong>PDF</strong> pour la transmettre au service achats.</p>
+
+<h3 id="s37">3.7 Alertes, planning et fenêtre site</h3>
+<h4>Alertes coûts</h4>
+<p>L'écran <strong>Alertes coûts</strong> signale automatiquement :</p>
+<ul>
+  <li>l'<strong>usure prématurée</strong> : une pièce remplacée avant 70 % de sa durée de vie attendue (sur 12 mois) ;</li>
+  <li>la <strong>surconsommation de lubrifiant</strong> : un engin qui consomme plus de 1,5 fois la moyenne de son modèle (sur 90 jours) ;</li>
+  <li>les <strong>fins de contrat</strong> ou de location à venir.</li>
+</ul>
+<figure class="tall"><img src="images/fr/60-alerts.png" alt="Alertes coûts"><figcaption><b>Figure 23.</b> Alertes coûts : usure prématurée et surconsommation.</figcaption></figure>
+<h4>Planning</h4>
+<p>Le <strong>Planning</strong> présente, par jour, semaine ou mois, les préventifs à échéance, les OT à échéance et les fins de contrat. Cliquez sur un élément pour en voir le détail.</p>
+<figure><img src="images/fr/61-planning.png" alt="Planning"><figcaption><b>Figure 24.</b> Planning hebdomadaire.</figcaption></figure>
+<h4>Fenêtre par site</h4>
+<p>Depuis une carte site du tableau de bord, la fenêtre site rassemble le parc du site (filtrable en direct), sa disponibilité, les interventions en cours, les équipes et le dispatch.</p>
+<figure class="tall"><img src="images/fr/62-site-overview.png" alt="Fenêtre site"><figcaption><b>Figure 25.</b> Fenêtre d'un site.</figcaption></figure>
+
+<h3 id="s38">3.8 Équipes et personnel</h3>
+<p>Les <strong>équipes</strong> sont organisées par shift (jour, nuit, rotation), avec un chef d'équipe et le numéro du dispatch. Le <strong>personnel</strong> regroupe conducteurs, opérateurs et mécaniciens, avec leur équipe et les engins qui leur sont affectés.</p>
+<figure><img src="images/fr/70-teams.png" alt="Équipes"><figcaption><b>Figure 26.</b> Équipes par shift.</figcaption></figure>
+<figure><img src="images/fr/71-personnel.png" alt="Personnel"><figcaption><b>Figure 27.</b> Liste du personnel.</figcaption></figure>
+
+<h3 id="s39">3.9 Référentiel marques et modèles</h3>
+<p>Le <strong>Référentiel</strong> (menu Paramètres) gère les marques et les modèles d'engins. Chaque modèle est rattaché à une catégorie. Cliquez sur une marque pour filtrer ses modèles ; l'interrupteur active ou désactive un modèle sans perdre l'historique.</p>
+<figure><img src="images/fr/72-catalog.png" alt="Référentiel"><figcaption><b>Figure 28.</b> Référentiel des marques et modèles.</figcaption></figure>
+
+<!-- ============================================================ PARTIE 4 -->
+<header class="part-head" id="p4">
+  <div class="kicker">Partie 4</div>
+  <h2 class="part">Direction et consultation</h2>
+  <p>Suivre la performance de la maintenance et prendre des décisions.</p>
+</header>
+
+<h3 id="s41">4.1 Rapports de direction</h3>
+<p>Les <strong>Rapports direction</strong> consolident, par site et sur la période choisie : taille du parc, disponibilité, nombre de pannes, OT ouverts et clôturés, heures d'immobilisation, MTTR, valeur des consommations et quantités de lubrifiants. Ils présentent aussi la répartition des causes de panne, la disponibilité par site, les engins qui coûtent le plus et les conducteurs les plus concernés par des pannes.</p>
+<figure class="tall"><img src="images/fr/80-reports.png" alt="Rapports"><figcaption><b>Figure 29.</b> Rapports de direction.</figcaption></figure>
+<div class="note tip"><b>Analyse</b>Chaque chiffre souligné est cliquable et ouvre la liste détaillée correspondante, exportable en Excel ou PDF.</div>
+<figure><img src="images/fr/81-reports-drill.png" alt="Détail d'un rapport"><figcaption><b>Figure 30.</b> Détail ouvert depuis un chiffre du rapport.</figcaption></figure>
+
+<h3 id="s42">4.2 Profil Consultation</h3>
+<p>Le profil <strong>Consultation</strong> accède au tableau de bord, aux listes, aux fiches et aux rapports de ses sites, sans pouvoir rien modifier. Les boutons d'action n'apparaissent pas.</p>
+<figure><img src="images/fr/82-viewer-dashboard.png" alt="Tableau de bord consultation"><figcaption><b>Figure 31.</b> Tableau de bord d'un utilisateur en consultation (sites KINGAKILA et SICOMINES).</figcaption></figure>
+
+<!-- ============================================================ PARTIE 5 -->
+<header class="part-head" id="p5">
+  <div class="kicker">Partie 5</div>
+  <h2 class="part">Administration</h2>
+  <p>Réservé aux administrateurs.</p>
+</header>
+
+<h3 id="s51">5.1 Sites</h3>
+<p>Le menu <strong>Paramètres › Sites</strong> liste les sites, avec leur nombre d'engins. Créez un site ou cliquez sur une ligne pour le modifier ; un site désactivé disparaît des listes de choix mais conserve son historique.</p>
+<figure><img src="images/fr/90-sites.png" alt="Sites"><figcaption><b>Figure 32.</b> Gestion des sites.</figcaption></figure>
+
+<h3 id="s52">5.2 Utilisateurs</h3>
+<figure><img src="images/fr/91-users.png" alt="Utilisateurs"><figcaption><b>Figure 33.</b> Liste des utilisateurs.</figcaption></figure>
+<ol class="steps">
+  <li>Cliquez sur <strong>Nouvel utilisateur</strong>, ou sur une ligne pour modifier un compte.</li>
+  <li>Renseignez le nom, l'e-mail, la langue et le <strong>profil</strong>.</li>
+  <li>Cochez les <strong>sites</strong> attribués, ou <em>Tous les sites</em>.</li>
+  <li>Définissez un mot de passe initial ; décochez <strong>Actif</strong> pour bloquer un compte sans le supprimer.</li>
+</ol>
+<figure class="tall"><img src="images/fr/92-user-form.png" alt="Fiche utilisateur"><figcaption><b>Figure 34.</b> Création ou modification d'un utilisateur.</figcaption></figure>
+<div class="note bad"><b>Bonnes pratiques</b>Attribuez le profil le plus restreint suffisant. Désactivez immédiatement le compte d'une personne qui quitte l'entreprise.</div>
+
+<h3 id="s53">5.3 Journal d'activité</h3>
+<p>Le <strong>Journal d'activité</strong> trace chaque modification : qui, quoi, quand, et pour les mises à jour, les valeurs avant et après (champs modifiés uniquement). Filtrez par type d'élément et par période ; exportez pour un audit.</p>
+<figure><img src="images/fr/93-activity.png" alt="Journal d'activité"><figcaption><b>Figure 35.</b> Journal d'activité.</figcaption></figure>
+
+<!-- ============================================================ ANNEXES -->
+<header class="part-head" id="p6">
+  <div class="kicker">Annexes</div>
+  <h2 class="part">Références</h2>
+</header>
+
+<h3 id="a1">A. Droits par profil</h3>
+<table>
+  <tr><th>Action</th><th>Admin.</th><th>Responsable</th><th>Technicien</th><th>Consultation</th></tr>
+  <tr><td>Tableau de bord, listes, fiches</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+  <tr><td>Rapports de direction</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="y">✓</td></tr>
+  <tr><td>Déclarer une panne, créer un OT</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
+  <tr><td>Exécuter un OT (pièces, intervenants, remarques)</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
+  <tr><td>Modifier / annuler un OT</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+  <tr><td>Relevés, statut d'engin, photos</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
+  <tr><td>Créer / modifier les engins, référentiel</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+  <tr><td>Affecter les conducteurs, gérer le personnel</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+  <tr><td>Plans préventifs</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+  <tr><td>Pièces : mouvements et réglages</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+  <tr><td>Mode terrain</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td></tr>
+  <tr><td>Journal d'activité</td><td class="y">✓</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td></tr>
+  <tr><td>Sites et utilisateurs</td><td class="y">✓</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+</table>
+<p>Tous ces droits s'exercent uniquement dans le périmètre de sites de l'utilisateur.</p>
+
+<h3 id="a2">B. Cycle de vie d'un OT et état de l'engin</h3>
+<table>
+  <tr><th>Statut de l'OT</th><th>Transitions possibles</th><th>Effet sur l'engin</th></tr>
+  <tr><td><strong>Ouvert</strong></td><td>En cours, Attente pièce, Terminé, Annulé</td><td><span class="badge b-bad">En panne</span> si l'OT est immobilisant</td></tr>
+  <tr><td><strong>En cours</strong></td><td>Attente pièce, Terminé, Annulé</td><td><span class="badge b-mnt">En maintenance</span></td></tr>
+  <tr><td><strong>Attente pièce</strong></td><td>En cours, Terminé, Annulé</td><td><span class="badge b-wait">Attente pièce</span></td></tr>
+  <tr><td><strong>Terminé / Annulé</strong></td><td>Aucune (statut final)</td><td>Recalculé d'après les autres OT ouverts, sinon <span class="badge b-ok">Disponible</span></td></tr>
+</table>
+<p>Un engin <span class="badge b-off">Immobilisé</span> ne change d'état que par une action manuelle. Un technicien n'agit que sur les OT de ses sites qui lui sont assignés ou non assignés ; en démarrant un OT non assigné, il se le voit attribuer.</p>
+
+<h3 id="a3">C. Glossaire</h3>
+<dl class="gloss">
+  <dt>OT</dt><dd>Ordre de travail : demande et suivi d'une intervention sur un engin.</dd>
+  <dt>Correctif / Préventif</dt><dd>Intervention suite à une panne / entretien planifié à intervalle régulier.</dd>
+  <dt>Engin immobilisé</dt><dd>OT signalant que l'engin ne peut plus travailler ; il est compté comme indisponible.</dd>
+  <dt>Disponibilité</dt><dd>Part des engins en état « Disponible » sur le parc total.</dd>
+  <dt>MTTR</dt><dd>Temps moyen de réparation des OT correctifs clôturés.</dd>
+  <dt>Immobilisation</dt><dd>Durée pendant laquelle un engin est resté indisponible.</dd>
+  <dt>Shift</dt><dd>Poste de travail : jour, nuit ou rotation.</dd>
+  <dt>Dispatch</dt><dd>Poste de coordination qui répartit les engins et les équipes.</dd>
+  <dt>Périmètre</dt><dd>Ensemble des sites auxquels un utilisateur a accès.</dd>
+  <dt>ADT</dt><dd>Tombereau articulé (<em>Articulated Dump Truck</em>).</dd>
+</dl>
+
+<h3 id="a4">D. Questions fréquentes</h3>
+<h4>Je ne vois pas un engin ou un OT.</h4>
+<p>Vérifiez le <strong>site de travail</strong> sélectionné dans le menu et les filtres actifs (bouton <em>Réinitialiser</em>). Si l'élément appartient à un site hors de votre périmètre, demandez l'accès à un administrateur.</p>
+<h4>Mon relevé de compteur est refusé.</h4>
+<p>La valeur est inférieure au dernier relevé enregistré. Un compteur ne peut pas diminuer ; en cas d'erreur précédente ou de remplacement du compteur, contactez votre responsable.</p>
+<h4>« Stock insuffisant » lors de la consommation d'une pièce.</h4>
+<p>Le stock du site ne couvre pas la quantité demandée. Faites enregistrer l'entrée de stock au magasin, ou mettez l'OT <em>En attente de pièce</em>.</p>
+<h4>Je ne peux pas annuler un OT.</h4>
+<p>L'annulation est réservée aux responsables maintenance et aux administrateurs.</p>
+<h4>Mon compte est verrouillé.</h4>
+<p>Après 5 tentatives de connexion erronées, patientez 15 minutes ou contactez un administrateur.</p>
+
+</main>
+</body>
+</html>
