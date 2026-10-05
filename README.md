@@ -87,6 +87,7 @@ public/assets/   css/app.css, js/ (pm-core, pm-tables, pm-export : modules purs 
 | Besoins achats | `/procurement` | consommation mensuelle (90 j ÷ 3), stock cible = max(2 × mini, 2 mois), quantité à commander, exports Excel / PDF |
 | Alertes coûts | `/alerts` | usure prématurée (< 70 % de la durée de vie entre deux remplacements), surconsommation de lubrifiant (> 1,5 × moyenne du modèle) |
 | Planning | `/planning` | jour / semaine / mois : préventifs, OT à échéance, fins de contrat |
+| Journal d'activité | `/activity` (responsables, dans leur périmètre) | qui a fait quoi : synthèse par utilisateur, filtres utilisateur / action / élément / période, détail d'une entrée (IP, appareil, avant / après), échecs de connexion |
 | Rapports direction | `/reports` | disponibilité, pannes, immobilisation, MTTR, consommations, causes, conducteurs (responsables et consultation) |
 
 ### Cycle de vie d'un OT et état de l'engin

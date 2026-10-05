@@ -291,6 +291,8 @@ div.dt-container .dt-processing > div:last-child > div { background: var(--accen
 .wo-card--high { border-left-color: var(--st-waiting-part); }
 .wo-card__head { display: flex; justify-content: space-between; gap: var(--space-2); align-items: center; font-size: .85rem; color: var(--text-muted); }
 .wo-card__title { font-weight: 600; margin: var(--space-1) 0; }
+.field-search { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
+.field-search .input { flex: 1; min-width: 0; }
 .sticky-actions { position: sticky; bottom: 0; background: var(--bg); padding: var(--space-3) 0; display: grid; gap: var(--space-2); }
 .sticky-actions .btn { min-height: 52px; }
 .search-results { list-style: none; margin: var(--space-2) 0 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -1012,3 +1014,31 @@ table.dataTable.compact td.dt-right, table.dataTable.compact th.dt-right { font-
   .filters__tools { margin-left: 0; width: 100%; justify-content: space-between; }
   div.dt-container .dt-search input { min-width: 0; width: 100%; }
 }
+
+/* Journal d'activité : synthèse par utilisateur, pastilles d'action, détail d'une entrée */
+.log-users { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-2); }
+.log-users .empty { grid-column: 1 / -1; }
+.log-user { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font: inherit; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.log-user:hover { border-color: var(--accent); }
+.log-user:focus-visible { outline: none; box-shadow: var(--focus); }
+.log-user[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.log-user__body { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.3; }
+.log-user__body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-user__count { font-weight: 600; font-size: 1.125rem; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.1; }
+.log-user__count small { display: block; font-size: .6875rem; font-weight: 500; color: var(--text-muted); }
+.log-action { background: #EEF0F3; color: var(--text); }
+.log-action--add { background: #E6F4EC; color: var(--st-available); }
+.log-action--remove, .log-action--alert { background: #FDECEA; color: var(--st-breakdown); }
+.log-action--session { background: var(--accent-soft); color: var(--accent); }
+table[data-table="activity"] tbody tr { cursor: pointer; }
+table[data-table="activity"] tbody tr:focus-visible { outline: none; box-shadow: inset var(--focus); }
+.log-detail { text-align: left; font-size: .9rem; }
+.log-detail__head { margin: 0 0 var(--space-2); }
+.log-detail__summary { margin: 0 0 var(--space-3); font-weight: 500; overflow-wrap: anywhere; }
+.log-detail .dl { margin-bottom: var(--space-4); }
+.log-detail .dl dd { overflow-wrap: anywhere; }
+.log-detail__table td { overflow-wrap: anywhere; }
+.log-detail__table del { color: var(--st-breakdown); }
+.log-detail__table ins { color: var(--st-available); text-decoration: none; font-weight: 500; }
+.log-detail__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+.log-detail__actions:empty { display: none; }

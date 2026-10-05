@@ -80,7 +80,7 @@ final class I18nTest extends TestCase
         foreach (\App\Controllers\ActivityController::ENTITY_TYPES as $type) {
             self::assertTrue($i18n->has('entity.' . $type), 'entity.' . $type);
         }
-        foreach (['create', 'update', 'status', 'archive', 'transition', 'done', 'part_consumed', 'stock_in', 'stock_out', 'stock_adjust', 'stock_settings', 'login', 'logout'] as $action) {
+        foreach (\App\Controllers\ActivityController::ACTIONS as $action) {
             self::assertTrue($i18n->has('action.' . $action), 'action.' . $action);
         }
         foreach (['required', 'string', 'array', 'int', 'numeric', 'email', 'date', 'datetime', 'in', 'min_value', 'max_value', 'min_length', 'max_length'] as $rule) {

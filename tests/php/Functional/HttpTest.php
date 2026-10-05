@@ -72,6 +72,47 @@ final class HttpTest extends DatabaseTestCase
         self::assertSame(1, (int) $this->value("SELECT COUNT(*) FROM activity_log WHERE action = 'login'"));
     }
 
+    public function testFailedLoginIsLoggedForKnownAccountsOnly(): void
+    {
+        $email = 'manager@test.local';
+        $id = $this->createUser('manager', [$this->lyon], false, $email);
+        $session = Session::memory();
+        $this->login($session, $email, 'wrong');
+        $this->login($session, 'nobody@test.local', 'wrong');
+
+        $logs = $this->db->fetchAll("SELECT * FROM activity_log WHERE action = 'login_failed'");
+        self::assertCount(1, $logs, 'Un identifiant inconnu ne remplit pas le journal');
+        self::assertSame($id, (int) $logs[0]['entity_id']);
+        self::assertNull($logs[0]['user_id'], "Personne n'est authentifié");
+        self::assertSame($email, $logs[0]['user_name']);
+        self::assertSame('127.0.0.1', $logs[0]['ip_address']);
+    }
+
+    public function testActivitySummaryAndFiltersOverHttp(): void
+    {
+        $admin = $this->createUser('admin');
+        $tech = $this->createUser('technician', [$this->lyon]);
+        $equipment = $this->createEquipment($this->lyon, 'LYO-1');
+        $session = $this->sessionFor($admin);
+        $this->http($session, 'POST', '/work-orders', $this->csrf() + ['equipment_id' => $equipment, 'title' => 'Test', 'priority' => 'normal']);
+
+        $summary = json_decode($this->http($session, 'GET', '/activity/summary', [], self::AJAX)->body, true);
+        self::assertSame($admin, (int) $summary['users'][0]['user_id']);
+        self::assertSame(1, (int) $summary['users'][0]['actions']);
+
+        $mine = json_decode($this->http($session, 'GET', "/activity/data?draw=1&user_id=$admin&action=create", [], self::AJAX)->body, true);
+        self::assertSame(1, $mine['recordsFiltered']);
+        self::assertSame('work_order', $mine['data'][0]['entity_type']);
+        $other = json_decode($this->http($session, 'GET', "/activity/data?draw=1&user_id=$tech", [], self::AJAX)->body, true);
+        self::assertSame(0, $other['recordsFiltered']);
+
+        $page = $this->http($session, 'GET', "/activity?user_id=$admin");
+        self::assertSame(200, $page->status);
+        self::assertMatchesRegularExpression('/<option value="' . $admin . '" selected>/', $page->body, "Filtre utilisateur prérempli par l'URL");
+
+        self::assertSame(403, $this->http($this->sessionFor($tech), 'GET', '/activity/summary', [], self::AJAX)->status);
+    }
+
     public function testAccountIsLockedAfterRepeatedFailures(): void
     {
         $email = 'manager@test.local';
@@ -118,6 +159,38 @@ final class HttpTest extends DatabaseTestCase
         self::assertSame(403, $this->http($viewerSession, 'GET', '/terrain')->status);
     }
 
+    public function testFieldEquipmentSearchStaysInFieldLayoutAndScope(): void
+    {
+        $tech = $this->createUser('technician', [$this->lyon]);
+        $first = $this->createEquipment($this->lyon, 'LYO-1');
+        $second = $this->createEquipment($this->lyon, 'LYO-2');
+        $other = $this->createEquipment($this->lille, 'LIL-1');
+        $session = $this->sessionFor($tech);
+
+        $home = $this->http($session, 'GET', '/terrain')->body;
+        self::assertStringContainsString('href="/terrain/engins"', $home, 'La recherche reste dans l\'interface terrain');
+
+        $list = $this->http($session, 'GET', '/terrain/engins');
+        self::assertSame(200, $list->status);
+        self::assertStringContainsString('field-app', $list->body);
+        self::assertStringContainsString("/terrain/engins/$first\"", $list->body);
+        self::assertStringContainsString("/terrain/engins/$second\"", $list->body);
+        self::assertStringNotContainsString('LIL-1', $list->body, 'Engin hors périmètre');
+
+        $filtered = $this->http($session, 'GET', '/terrain/engins?q=LYO-2')->body;
+        self::assertStringContainsString("/terrain/engins/$second\"", $filtered);
+        self::assertStringNotContainsString("/terrain/engins/$first\"", $filtered);
+
+        $show = $this->http($session, 'GET', "/terrain/engins/$first");
+        self::assertSame(200, $show->status);
+        self::assertStringContainsString('field-app', $show->body);
+        self::assertStringContainsString("/terrain/declarer?equipment_id=$first", $show->body);
+        self::assertSame(404, $this->http($session, 'GET', "/terrain/engins/$other")->status);
+
+        $viewer = $this->sessionFor($this->createUser('viewer', [$this->lyon]));
+        self::assertSame(403, $this->http($viewer, 'GET', '/terrain/engins')->status);
+    }
+
     public function testFieldDeclarationFlowAndValidationRedirect(): void
     {
         $tech = $this->createUser('technician', [$this->lyon]);
@@ -135,6 +208,10 @@ final class HttpTest extends DatabaseTestCase
         $woId = (int) $this->value('SELECT id FROM work_orders');
         self::assertSame("/terrain/ot/$woId", $ok->headers['Location']);
         self::assertSame('breakdown', $this->value('SELECT status FROM equipment WHERE id = :id', ['id' => $equipment]));
+
+        $sheet = $this->http($session, 'GET', "/terrain/ot/$woId")->body;
+        self::assertStringContainsString('data-wo-pdf', $sheet, 'Bon de travail téléchargeable depuis le terrain');
+        self::assertStringContainsString('id="wo-data"', $sheet);
 
         $start = $this->http($session, 'POST', "/work-orders/$woId/transition", ['status' => 'in_progress'], self::AJAX + ['x-csrf-token' => str_repeat('a', 64)]);
         self::assertSame(200, $start->status);
@@ -202,7 +279,7 @@ final class HttpTest extends DatabaseTestCase
 
         $pages = ['/', '/equipment', "/equipment/$equipment", "/equipment/$equipment/edit", '/equipment/create', '/work-orders',
             "/work-orders/$wo", "/work-orders/$wo/edit", "/work-orders/create?equipment_id=$equipment", '/preventive', '/preventive/create',
-            "/preventive/$plan/edit", '/parts', "/parts/$part", '/parts/create', '/terrain', '/terrain/declarer', "/terrain/ot/$wo",
+            "/preventive/$plan/edit", '/parts', "/parts/$part", '/parts/create', '/terrain', '/terrain/declarer', "/terrain/ot/$wo", '/terrain/engins', "/terrain/engins/$equipment",
             '/sites', "/sites/{$this->lyon}", "/sites/{$this->lyon}/edit", '/catalog', '/users', '/users/create', "/users/$admin/edit", '/activity'];
         foreach ($pages as $path) {
             $response = $this->http($session, 'GET', $path);

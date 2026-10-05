@@ -7,7 +7,9 @@
     <?php if ($wo['operator_name']): ?><p class="muted" style="margin:4px 0 0"><?= e(t('work_orders.operator_at_report')) ?> : <strong><?= e($wo['operator_name']) ?></strong></p><?php endif; ?>
     <?php if ($wo['description']): ?><p style="margin-top: 12px"><?= nl2br(e($wo['description'])) ?></p><?php endif; ?>
     <?php if ($wo['resolution']): ?><p><strong><?= e(t('fields.resolution')) ?> :</strong> <?= nl2br(e($wo['resolution'])) ?></p><?php endif; ?>
+    <p style="margin: 12px 0 0"><button type="button" class="btn" data-wo-pdf><i data-lucide="printer"></i><?= e(t('work_orders.print')) ?></button></p>
 </div>
+<script type="application/json" id="wo-data"><?= json_for_html(['wo' => $wo, 'parts' => $parts]) ?></script>
 
 <?php if ($parts !== []): ?>
     <h2><?= e(t('work_orders.parts')) ?></h2>

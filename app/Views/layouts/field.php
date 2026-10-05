@@ -8,7 +8,7 @@
 <div class="field-app">
     <header class="field-bar">
         <?php if (($currentPath ?? '') !== '/terrain'): ?>
-            <a href="<?= e(url('/terrain')) ?>" aria-label="<?= e(t('common.back')) ?>"><i data-lucide="arrow-left"></i></a>
+            <a href="<?= e(url(str_starts_with($currentPath ?? '', '/terrain/engins/') ? '/terrain/engins' : '/terrain')) ?>" aria-label="<?= e(t('common.back')) ?>"><i data-lucide="arrow-left"></i></a>
         <?php else: ?>
             <a href="<?= e(url('/')) ?>" aria-label="<?= e(t('nav.dashboard')) ?>"><i data-lucide="layout-dashboard"></i></a>
         <?php endif; ?>

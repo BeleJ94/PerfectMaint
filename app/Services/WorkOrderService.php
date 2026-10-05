@@ -336,10 +336,21 @@ final class WorkOrderService
             if (WorkOrderStatus::from($wo['status'])->isClosed()) {
                 throw Validator::fail('status', 'closed');
             }
+            $removed = null;
+            foreach ($this->workOrders->technicians($id) as $technician) {
+                if ((int) $technician['id'] === $technicianId) {
+                    $removed = $technician;
+                }
+            }
             if ($this->workOrders->removeTechnician($id, $technicianId) === 0) {
                 throw HttpException::notFound();
             }
             $this->workOrders->update($id, ['labor_minutes' => $this->workOrders->technicianMinutes($id)]);
+            $this->logger->log(
+                'technician_remove', 'work_order', $id, (int) $wo['site_id'],
+                ['personnel' => $removed['name'] ?? null, 'minutes' => $removed['minutes'] ?? null], null,
+                $wo['reference'] . ' : ' . ($removed['name'] ?? '#' . $technicianId)
+            );
         });
     }
 

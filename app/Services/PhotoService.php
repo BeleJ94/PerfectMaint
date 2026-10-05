@@ -93,6 +93,7 @@ final class PhotoService
         $photo = $this->photos->find($equipmentId, $photoId) ?? throw HttpException::notFound();
         $this->equipment->scope()->assertAllows((int) $photo['site_id']);
         $this->photos->setPrimary($equipmentId, $photoId);
+        $this->logger->log('photo_primary', 'equipment', $equipmentId, (int) $photo['site_id'], null, ['photo_id' => $photoId], $photo['equipment_code']);
     }
 
     public function delete(int $equipmentId, int $photoId): void

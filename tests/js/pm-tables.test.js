@@ -79,6 +79,31 @@ test('textes d’export lisibles (libellés traduits, dates françaises)', () =>
   assert.equal(text.assignee, '');
 });
 
+test('journal : libellés de champs et valeurs traduits selon le type d’élément', () => {
+  const wo = { entity_type: 'work_order', before_data: '{"status":"open","priority":"normal"}', after_data: '{"status":"in_progress","priority":"high","foo":1}' };
+  assert.deepEqual(Tables.activityDiff(wo, t), [
+    { label: 'Statut', before: fr['wo_status.open'], after: fr['wo_status.in_progress'] },
+    { label: 'Priorité', before: fr['priority.normal'], after: fr['priority.high'] },
+    { label: 'foo', before: '∅', after: '1' }
+  ]);
+  const eq = { entity_type: 'equipment', before_data: '{"status":"available"}', after_data: '{"status":"breakdown"}' };
+  assert.equal(Tables.activityDiff(eq, t)[0].after, fr['status.breakdown']);
+  // Création : un seul côté, valeurs vides ignorées
+  assert.deepEqual(Tables.activityDiff({ entity_type: 'part', before_data: null, after_data: '{"quantity":4,"comment":null}' }, t), [
+    { label: 'Quantité', value: '4' }
+  ]);
+  assert.deepEqual(Tables.activityDiff({ entity_type: 'user', before_data: null, after_data: null }, t), []);
+});
+
+test('journal : auteur et famille d’action', () => {
+  assert.equal(Tables.actorName({ user_id: 3, user_name: 'Marc R.' }, t), 'Marc R.');
+  assert.equal(Tables.actorName({ user_id: null, user_name: 'system' }, t), fr['js.log_system']);
+  assert.equal(Tables.actorName({ user_id: null, user_name: null }, t), fr['js.log_anonymous']);
+  assert.equal(Tables.actionTone('login_failed'), 'alert');
+  assert.equal(Tables.actionTone('create'), 'add');
+  assert.equal(Tables.actionTone('transition'), 'change');
+});
+
 test('diff du journal', () => {
   assert.deepEqual(Tables.diffEntries('{"status":"available"}', '{"status":"breakdown","reason":"Fuite"}'), [
     { key: 'status', before: 'available', after: 'breakdown' },

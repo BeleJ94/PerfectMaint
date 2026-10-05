@@ -55,8 +55,9 @@ final class Auth
     }
 
     /**
-     * @return array{ok: bool, error?: string, user?: CurrentUser}
+     * @return array{ok: bool, error?: string, user?: CurrentUser, user_id?: int}
      *   error = clé i18n (message volontairement générique pour ne pas révéler l'existence du compte)
+     *   user_id = compte visé par un mot de passe erroné (journalisation uniquement, jamais renvoyé au client)
      */
     public function attempt(string $email, string $password): array
     {
@@ -80,7 +81,7 @@ final class Auth
                 (int) $this->security['lockout_minutes']
             );
 
-            return ['ok' => false, 'error' => 'auth.invalid'];
+            return ['ok' => false, 'error' => 'auth.invalid', 'user_id' => (int) $row['id']];
         }
 
         $this->identities->recordSuccess((int) $row['id']);

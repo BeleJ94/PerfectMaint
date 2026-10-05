@@ -191,13 +191,17 @@
         order: [[0, 'desc']],
         columns: [
           { data: 'created_at', title: t('js.date'), className: 'nowrap', text: function (r) { return dateTime(r.created_at); } },
-          { data: 'user_name', title: t('js.user') },
+          { data: 'user_name', title: t('js.user'), html: function (r) {
+            return '<strong>' + esc(actorName(r, t)) + '</strong>';
+          }, text: function (r) { return actorName(r, t); } },
           { data: 'site', title: t('fields.site_id'), orderable: false },
           { data: 'entity_type', title: t('fields.entity_type'), text: function (r) { return t('entity.' + r.entity_type) + (r.entity_id ? ' #' + r.entity_id : ''); } },
-          { data: 'action', title: t('js.action'), text: function (r) { return t('action.' + r.action); } },
+          { data: 'action', title: t('js.action'), html: function (r) {
+            return '<span class="badge badge--plain log-action log-action--' + actionTone(r.action) + '">' + esc(t('action.' + r.action)) + '</span>';
+          }, text: function (r) { return t('action.' + r.action); } },
           { data: 'summary', title: t('js.summary'), orderable: false, html: function (r) {
-            return esc(r.summary) + diffHtml(r.before_data, r.after_data);
-          }, text: function (r) { return (r.summary || '') + diffText(r.before_data, r.after_data); } }
+            return esc(r.summary) + diffHtml(activityDiff(r, t));
+          }, text: function (r) { return (r.summary || '') + diffText(activityDiff(r, t)); } }
         ]
       }
     };
@@ -277,17 +281,78 @@
     });
   }
 
-  function diffHtml(beforeJson, afterJson) {
-    var entries = diffEntries(beforeJson, afterJson);
+  /** Auteur d'une entrée : compte, tâche planifiée (« system ») ou identifiant saisi sans session. */
+  function actorName(row, t) {
+    if (!row.user_name) return t('js.log_anonymous');
+    return row.user_name === 'system' && !row.user_id ? t('js.log_system') : String(row.user_name);
+  }
+
+  /** Famille d'une action, pour la couleur de sa pastille. */
+  function actionTone(action) {
+    if (action === 'create' || action === 'photo_add' || action === 'stock_in' || action === 'assign') return 'add';
+    if (action === 'archive' || action === 'photo_delete' || action === 'technician_remove' || action === 'unassign') return 'remove';
+    if (action === 'login_failed') return 'alert';
+    if (action === 'login' || action === 'logout') return 'session';
+    return 'change';
+  }
+
+  // Champs dont la valeur est un code traduit : champ => groupe du catalogue (selon le type d'élément si besoin).
+  var VALUE_GROUPS = {
+    priority: 'priority', role: 'role', job: 'job', shift: 'shift', failure_cause: 'cause', part_type: 'part_type',
+    status: { work_order: 'wo_status', equipment: 'status' },
+    type: { work_order: 'wo_type' }
+  };
+
+  function fieldLabel(key, t) {
+    var label = t('fields.' + key);
+    return label === 'fields.' + key ? key : label;
+  }
+
+  function valueLabel(key, value, entityType, t) {
+    var group = VALUE_GROUPS[key];
+    if (group && typeof group === 'object') group = group[entityType];
+    if (!group || value === null || value === undefined || value === '' || typeof value === 'object') return scalar(value);
+    var label = t(group + '.' + value);
+    return label === group + '.' + value ? scalar(value) : label;
+  }
+
+  /**
+   * Détail lisible d'une entrée du journal : libellés de champs et valeurs traduits.
+   * Modification → { label, before, after } ; création / événement (un seul côté) → { label, value }.
+   */
+  function activityDiff(row, t) {
+    var before = parseJson(row.before_data);
+    var after = parseJson(row.after_data);
+    var type = row.entity_type;
+    if (before && after) {
+      return Object.keys(after).map(function (key) {
+        return { label: fieldLabel(key, t), before: valueLabel(key, before[key], type, t), after: valueLabel(key, after[key], type, t) };
+      });
+    }
+    var only = after || before;
+    if (!only || typeof only !== 'object') return [];
+    return Object.keys(only).filter(function (key) {
+      return only[key] !== null && only[key] !== '';
+    }).map(function (key) {
+      return { label: fieldLabel(key, t), value: valueLabel(key, only[key], type, t) };
+    });
+  }
+
+  function changes(entries) {
+    return entries.filter(function (e) { return e.before !== undefined; });
+  }
+
+  function diffHtml(entries) {
+    entries = changes(entries);
     if (!entries.length) return '';
     return '<div class="diff">' + entries.map(function (e) {
-      return '<div>' + esc(e.key) + ' : <del>' + esc(e.before) + '</del> → <ins>' + esc(e.after) + '</ins></div>';
+      return '<div>' + esc(e.label) + ' : <del>' + esc(e.before) + '</del> → <ins>' + esc(e.after) + '</ins></div>';
     }).join('') + '</div>';
   }
 
-  function diffText(beforeJson, afterJson) {
-    var entries = diffEntries(beforeJson, afterJson);
-    return entries.length ? ' [' + entries.map(function (e) { return e.key + ': ' + e.before + ' → ' + e.after; }).join('; ') + ']' : '';
+  function diffText(entries) {
+    entries = changes(entries);
+    return entries.length ? ' [' + entries.map(function (e) { return e.label + ': ' + e.before + ' → ' + e.after; }).join('; ') + ']' : '';
   }
 
   /** Valeur texte d'une cellule (exports), à partir de la définition de colonne. */
@@ -307,6 +372,9 @@
     cellValue: cellValue,
     definitions: definitions,
     diffEntries: diffEntries,
+    activityDiff: activityDiff,
+    actorName: actorName,
+    actionTone: actionTone,
     cellText: cellText,
     cellHtml: cellHtml
   };

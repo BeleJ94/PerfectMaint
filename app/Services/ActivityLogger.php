@@ -28,6 +28,7 @@ final class ActivityLogger
     }
 
     /**
+     * @param string|null $actor nom affiché quand aucune session n'est ouverte (ex. identifiant saisi lors d'un échec de connexion)
      * @return int|null identifiant de l'entrée, null si aucune modification réelle
      */
     public function log(
@@ -38,6 +39,7 @@ final class ActivityLogger
         ?array $before = null,
         ?array $after = null,
         ?string $summary = null,
+        ?string $actor = null,
     ): ?int {
         if ($before !== null && $after !== null) {
             [$before, $after] = self::diff($before, $after);
@@ -49,7 +51,7 @@ final class ActivityLogger
 
         return $this->repository->insert([
             'user_id' => $user?->id,
-            'user_name' => $user?->name() ?? 'system',
+            'user_name' => $user?->name() ?? ($actor !== null ? mb_substr($actor, 0, 170) : 'system'),
             'site_id' => $siteId,
             'entity_type' => $entityType,
             'entity_id' => $entityId,

@@ -33,6 +33,11 @@ final class AuthController extends Controller
         $email = (string) $request->string('email');
         $result = $this->ctx->auth->attempt($email, (string) ($request->body['password'] ?? ''));
         if (!$result['ok']) {
+            // Mot de passe erroné sur un compte existant (borné par le verrouillage : le journal ne peut pas être inondé).
+            if (isset($result['user_id'])) {
+                $this->logger->log('login_failed', 'user', $result['user_id'], null, null, null, mb_substr($email, 0, 190), $email);
+            }
+
             return $this->render('auth/login', ['email' => $email, 'error' => t($result['error'])], 422, 'layouts/minimal');
         }
         $user = $result['user'];

@@ -102,6 +102,8 @@ return static function (Router $r): void {
     $r->get('/terrain/declarer', [FieldController::class, 'declare'], ['permission' => 'workorder.create']);
     $r->post('/terrain/declarer', [FieldController::class, 'storeDeclaration'], ['permission' => 'workorder.create']);
     $r->get('/terrain/ot/{id}', [FieldController::class, 'show'], ['permission' => 'field.use']);
+    $r->get('/terrain/engins', [FieldController::class, 'equipment'], ['permission' => 'field.use']);
+    $r->get('/terrain/engins/{id}', [FieldController::class, 'showEquipment'], ['permission' => 'field.use']);
 
     // Équipes par shift, personnel, affectations chauffeurs / opérateurs
     $r->get('/teams', [WorkforceController::class, 'teams'], ['permission' => 'personnel.view']);
@@ -145,4 +147,5 @@ return static function (Router $r): void {
 
     $r->get('/activity', [ActivityController::class, 'index'], ['permission' => 'activity.view']);
     $r->get('/activity/data', [ActivityController::class, 'data'], ['permission' => 'activity.view']);
+    $r->get('/activity/summary', [ActivityController::class, 'summary'], ['permission' => 'activity.view']);
 };

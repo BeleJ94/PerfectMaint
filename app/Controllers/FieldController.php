@@ -16,6 +16,8 @@ use App\Services\WorkOrderService;
  */
 final class FieldController extends Controller
 {
+    private const EQUIPMENT_LIMIT = 50;
+
     public function __construct(
         ControllerContext $ctx,
         private readonly WorkOrderRepository $workOrders,
@@ -59,5 +61,29 @@ final class FieldController extends Controller
         $wo = $this->workOrders->find($this->id($params)) ?? throw HttpException::notFound();
 
         return $this->render('field/show', $this->workOrderController->detailData($wo), 200, 'layouts/field');
+    }
+
+    /** Recherche d'engin sans quitter l'interface terrain (rendu serveur : fonctionne sur réseau faible). */
+    public function equipment(Request $request): Response
+    {
+        $term = mb_substr(trim((string) $request->string('q')), 0, 100);
+
+        return $this->render('field/equipment', [
+            'title' => t('field.find_equipment'),
+            'term' => $term,
+            'items' => $this->equipment->search($term, $this->siteFilter($request), self::EQUIPMENT_LIMIT),
+            'limit' => self::EQUIPMENT_LIMIT,
+        ], 200, 'layouts/field');
+    }
+
+    public function showEquipment(Request $request, array $params): Response
+    {
+        $item = $this->equipment->find($this->id($params)) ?? throw HttpException::notFound();
+
+        return $this->render('field/equipment_show', [
+            'title' => $item['code'],
+            'item' => $item,
+            'openWorkOrders' => $this->workOrders->openForEquipment((int) $item['id']),
+        ], 200, 'layouts/field');
     }
 }

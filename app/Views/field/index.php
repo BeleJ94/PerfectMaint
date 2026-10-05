@@ -3,7 +3,7 @@
     <?php if ($currentUser->can('workorder.create')): ?>
         <a class="btn btn--danger" href="<?= e(url('/terrain/declarer')) ?>"><i data-lucide="alert-octagon"></i><?= e(t('field.declare')) ?></a>
     <?php endif; ?>
-    <a class="btn" href="<?= e(url('/equipment')) ?>"><i data-lucide="search"></i><?= e(t('field.find_equipment')) ?></a>
+    <a class="btn" href="<?= e(url('/terrain/engins')) ?>"><i data-lucide="search"></i><?= e(t('field.find_equipment')) ?></a>
 </div>
 
 <h2><?= e(t('field.my_queue')) ?> <span class="muted">(<?= count($queue) ?>)</span></h2>

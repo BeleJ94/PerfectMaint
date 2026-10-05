@@ -9,7 +9,14 @@ $selectedSites = array_map('intval', (array) old('site_ids', $item['site_ids'] ?
 $active = (bool) old('is_active', $item['is_active'] ?? true);
 $allSites = (bool) old('all_sites', $item['all_sites'] ?? false);
 ?>
-<div class="page-header"><h1><?= e($title) ?></h1></div>
+<div class="page-header">
+    <h1><?= e($title) ?></h1>
+    <?php if ($id !== null && $currentUser->can('activity.view')): ?>
+        <div class="page-header__actions">
+            <a class="btn" href="<?= e(url('/activity', ['user_id' => $id])) ?>"><i data-lucide="history"></i><?= e(t('activity.user_activity')) ?></a>
+        </div>
+    <?php endif; ?>
+</div>
 <form method="post" action="<?= e(url($id ? "/users/$id" : '/users')) ?>" class="card form" autocomplete="off">
     <?= csrf_field() ?>
     <div class="form-grid">
