@@ -78,6 +78,10 @@ final class MeterMonitorService
                     'at' => $r['recorded_at'],
                     'hour_meter' => $r['hour_meter'] !== null ? (int) $r['hour_meter'] : null,
                     'odometer_km' => $r['odometer_km'] !== null ? (int) $r['odometer_km'] : null,
+                    // Détail du relevé, affiché au clic sur un point de la courbe
+                    'fuel_level' => $r['fuel_level'] !== null ? (int) $r['fuel_level'] : null,
+                    'note' => $r['note'],
+                    'by' => $r['recorded_by_name'],
                 ],
                 array_filter($readings, static fn (array $r) => $r['recorded_at'] >= $chartStart)
             )),

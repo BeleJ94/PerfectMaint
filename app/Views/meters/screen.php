@@ -1,6 +1,6 @@
 <?php
 /** @var array $overview  @var string|null $siteName  @var bool $rotate  @var array $rules */
-$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/meters-screen.js']);
+$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/meters-screen.js']);
 $kpis = [
     'due' => ['meters.kpi_due', 'alert-octagon'],
     'soon' => ['meters.kpi_soon', 'wrench'],
@@ -40,7 +40,12 @@ $kpis = [
 
     <section class="wall__main">
         <div class="wall__panel wall__panel--list">
-            <div class="wall__title"><h2 data-wall-list-title><?= e(t('meters.wall_list')) ?></h2><span class="wall__pager" data-wall-pages></span></div>
+            <div class="wall__title"><h2 data-wall-list-title><?= e(t('meters.wall_list')) ?></h2>
+                <span class="wall__title-tools">
+                    <label class="wall__search"><i data-lucide="search"></i><input type="search" data-wall-search autocomplete="off" placeholder="<?= e(t('entry.search')) ?>" aria-label="<?= e(t('entry.search')) ?>"></label>
+                    <span class="wall__pager" data-wall-pages></span>
+                </span>
+            </div>
             <div class="wall__rows" data-wall-rows></div>
         </div>
         <div class="wall__side">

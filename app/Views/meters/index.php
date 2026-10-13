@@ -1,6 +1,6 @@
 <?php
 /** @var array $sites  @var int|null $siteId  @var array $overview  @var int|null $selected  @var array $rules */
-$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/meters.js']);
+$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/meters.js']);
 $s = $overview['summary'];
 ?>
 <div class="page-header">

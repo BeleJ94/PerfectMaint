@@ -1102,6 +1102,21 @@ table[data-table="activity"] tbody tr:focus-visible { outline: none; box-shadow:
 .entry-all-done { display: flex; align-items: center; gap: var(--space-2); color: var(--st-available); font-weight: 600; }
 .entry-all-done[hidden] { display: none; }
 
+/* Détail d'un relevé, ouvert au clic sur un point d'une courbe (au-dessus des autres fenêtres) */
+.reading-pop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 1em; background: rgba(16, 24, 40, .45); }
+.reading-pop__card { width: min(100%, 26em); background: #fff; color: #1B2430; border-radius: .75em; box-shadow: 0 1em 3em rgba(0, 0, 0, .35); padding: 1.1em 1.25em; outline: none; text-align: left; }
+.reading-pop__card header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1em; margin-bottom: .8em; }
+.reading-pop__card h3 { margin: 0; font-size: 1.1em; line-height: 1.25; color: #1B2430; }
+.reading-pop__card header p { margin: .15em 0 0; font-size: .85em; color: #5B6573; }
+.reading-pop__close { width: 1.9em; height: 1.9em; flex-shrink: 0; border: 1px solid #DDE1E6; border-radius: .4em; background: #fff; color: #1B2430; font: inherit; font-size: 1.1em; line-height: 1; cursor: pointer; }
+.reading-pop__close:hover { border-color: #1F4E79; color: #1F4E79; }
+.reading-pop__card dl { margin: 0; }
+.reading-pop__row { display: grid; grid-template-columns: 9.5em 1fr; gap: .75em; padding: .5em 0; border-top: 1px solid #EEF0F3; }
+.reading-pop__row dt { color: #5B6573; font-size: .85em; }
+.reading-pop__row dd { margin: 0; font-variant-numeric: tabular-nums; }
+.reading-pop__row dd strong { font-size: 1.1em; }
+.reading-pop__row dd small { display: block; font-size: .8em; color: #5B6573; }
+
 /* Supervision des index */
 .meters-popup { padding: 0 0 1.25em; }
 .meters-modal { text-align: left; font-size: .875rem; color: var(--text); }
@@ -1154,6 +1169,12 @@ button.wall__kpi { display: block; width: 100%; }
 .wall__kpi:focus-visible, .wall__chip:focus-visible, .wall__row:focus-visible, .wall__nav:focus-visible { outline: .15em solid #6CB0F2; outline-offset: -.15em; }
 .wall__row { cursor: pointer; }
 .wall__row:hover { background: #162234; }
+.wall__title-tools { display: inline-flex; align-items: center; gap: .8em; min-width: 0; }
+.wall__search { display: inline-flex; align-items: center; gap: .4em; padding: 0 .6em; height: 1.9em; border-radius: .45em; border: 1px solid var(--w-line); background: #19273A; color: var(--w-muted); }
+.wall__search:focus-within { border-color: #6CB0F2; color: #F2F5F8; }
+.wall__search input { width: 11em; min-width: 0; border: 0; outline: 0; background: transparent; color: #F2F5F8; font: inherit; font-size: .9em; }
+.wall__search input::placeholder { color: var(--w-muted); }
+.wall__search input::-webkit-search-cancel-button { filter: invert(1); cursor: pointer; }
 .wall__pager { display: inline-flex; align-items: center; gap: .5em; white-space: nowrap; }
 .wall__nav { width: 1.8em; height: 1.8em; border-radius: .4em; border: 1px solid var(--w-line); background: #19273A; text-align: center; line-height: 1; font-size: 1.1em; }
 .wall__nav:hover { border-color: #6CB0F2; }

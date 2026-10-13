@@ -70,9 +70,11 @@ final class MeterMonitorRepository extends Repository
         }
 
         return $this->db->fetchAll(
-            "SELECT r.equipment_id, r.recorded_at, r.hour_meter, r.odometer_km
+            "SELECT r.id, r.equipment_id, r.recorded_at, r.hour_meter, r.odometer_km, r.fuel_level, r.note,
+                    CONCAT(u.first_name, ' ', u.last_name) AS recorded_by_name
                FROM meter_readings r
                JOIN equipment e ON e.id = r.equipment_id AND e.is_archived = 0
+               LEFT JOIN users u ON u.id = r.recorded_by
               WHERE $scopeSql AND r.recorded_at >= :from
                 AND (r.hour_meter IS NOT NULL OR r.odometer_km IS NOT NULL) $extraSql
               ORDER BY r.recorded_at, r.id",

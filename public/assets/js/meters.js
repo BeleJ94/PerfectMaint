@@ -268,7 +268,10 @@
     var rate = metric === 'hour_meter' ? d.rate_hours : d.rate_km;
     var current = d[metric];
     var plan = d.plans[0];
-    var points = d.series.filter(function (r) { return r[metric] !== null; }).map(function (r) { return { x: ts(r.at), y: r[metric] }; });
+    // « i » : position du relevé dans la série, pour retrouver son détail au clic sur le point.
+    var points = [];
+    d.series.forEach(function (r, i) { if (r[metric] !== null) points.push({ x: ts(r.at), y: r[metric], i: i }); });
+    var readingClick = window.PMReading.chartOptions(function () { return { equipment: d, series: d.series }; });
 
     var age = d.days_since === null ? t('js.meters.never') : (d.days_since === 0 ? t('js.meters.today') : t('js.meters.days_ago', { n: d.days_since }));
     $('[data-meters-detail-title]').text(d.code);
@@ -337,6 +340,8 @@
         maintainAspectRatio: false,
         animation: false, // redessiné à chaque actualisation : pas d'effet de clignotement
         parsing: false,
+        onClick: readingClick.onClick,
+        onHover: readingClick.onHover,
         interaction: { mode: 'nearest', axis: 'x', intersect: false },
         scales: {
           x: {

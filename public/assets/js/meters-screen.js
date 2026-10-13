@@ -29,7 +29,7 @@
   var LINE = '#6CB0F2';
   var STATUS_COLOR = { due: '#F97066', soon: '#FDB022', ok: '#47CD89', none: '#98A2B3' };
 
-  var state = { rows: boot.overview.rows, loadedAt: Date.now(), view: 0, step: 0, chart: null, series: {}, flash: {}, failed: false, filter: null, pausedUntil: 0, chartId: null };
+  var state = { rows: boot.overview.rows, loadedAt: Date.now(), view: 0, step: 0, chart: null, series: {}, flash: {}, failed: false, filter: null, search: '', pausedUntil: 0, chartId: null };
 
   function num(value, decimals) { return Core.formatNumber(value, locale, decimals); }
   function pad(n) { return n < 10 ? '0' + n : String(n); }
@@ -63,12 +63,17 @@
   };
   /** Lignes de la liste : les échéances à traiter, ou le filtre choisi au clic. */
   function listRows(rows) {
-    return state.filter ? rows.filter(FILTERS[state.filter]) : urgent(rows);
+    if (state.filter) rows = rows.filter(FILTERS[state.filter]);
+    // Une recherche porte sur tous les engins (ou sur ceux de l'indicateur choisi), pas seulement sur les échéances à traiter.
+    if (state.search) {
+      return rows.filter(function (r) { return (r.code + ' ' + r.name + ' ' + r.site).toLowerCase().indexOf(state.search) !== -1; });
+    }
+    return state.filter ? rows : urgent(rows);
   }
   /** Engins parcourus par la rotation : ceux de la liste, sinon tous les engins suivis (pour la courbe). */
   function pool(rows) {
     var list = listRows(rows);
-    return list.length || state.filter ? list : rows.filter(function (r) { return r.hour_meter !== null; });
+    return list.length || state.filter || state.search ? list : rows.filter(function (r) { return r.hour_meter !== null; });
   }
 
   // ---------------------------------------------------------------- Rendu
@@ -122,7 +127,8 @@
     $('[data-wall-kpi="read"]').toggleClass('is-on', count(function (r) { return r.days_since !== 0; }) > 0);
 
     $('[data-wall-kpi]').each(function () { this.classList.toggle('is-selected', this.dataset.wallKpi === state.filter); });
-    $('[data-wall-list-title]').text(state.filter ? $('[data-wall-kpi="' + state.filter + '"]').data('title') : defaultTitle);
+    $('[data-wall-list-title]').text((state.filter ? $('[data-wall-kpi="' + state.filter + '"]').data('title') : (state.search ? t('js.wall.all_equipment') : defaultTitle))
+      + (state.search ? ' · ' + t('js.wall.results', { n: todo.length }) : ''));
     $('[data-wall-pages]').html(pages > 1
       ? '<button type="button" class="wall__nav" data-wall-page="-1" aria-label="' + esc(t('js.wall.prev')) + '">‹</button>'
         + esc(t('js.wall.page', { n: page + 1, total: pages }))
@@ -130,7 +136,7 @@
       : '');
     $('[data-wall-rows]').html(todo.length
       ? todo.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(function (r, i) { return rowHtml(r, page * PAGE_SIZE + i === state.step, page * PAGE_SIZE + i); }).join('')
-      : '<div class="wall__empty"><i data-lucide="shield-check"></i><p>' + esc(t(state.filter ? 'js.no_result' : 'js.wall.none')) + '</p></div>');
+      : '<div class="wall__empty"><i data-lucide="shield-check"></i><p>' + esc(state.filter || state.search ? t('js.no_result') : t('js.wall.none')) + '</p></div>');
 
     // Engins non relevés aujourd'hui : les plus anciens relevés d'abord (jamais relevé en tête).
     var unread = rows.filter(function (r) { return r.days_since !== 0; }).sort(function (a, b) {
@@ -162,7 +168,7 @@
 
   function drawChart(d) {
     if (state.chart) { state.chart.destroy(); state.chart = null; }
-    var points = d ? d.series.filter(function (r) { return r.hour_meter !== null; }).map(function (r) { return { x: ts(r.at), y: r.hour_meter }; }) : [];
+    var points = d ? seriesPoints(d) : [];
     $('[data-wall-chart-title]').text(d ? t('js.meters.evolution_of', { code: d.code }) : '');
     $('[data-wall-equipment]').prop('hidden', !d).attr('href', d ? Core.fillUrl(urls.equipment, { id: d.id }) : '#');
     $('[data-wall-chart-rate]').text(d && d.rate_hours !== null ? num(d.rate_hours, 1) + ' ' + t('js.meters.per_day') : '');
@@ -170,9 +176,21 @@
     state.chart = buildChart(document.getElementById('wall-chart'), d, points);
   }
 
+  /** Points de la courbe horaire ; « i » est la position du relevé dans la série (détail au clic sur le point). */
+  function seriesPoints(d) {
+    var points = [];
+    d.series.forEach(function (r, i) { if (r.hour_meter !== null) points.push({ x: ts(r.at), y: r.hour_meter, i: i }); });
+    return points;
+  }
+
   /** Courbe des relevés d'un engin, avec projection au rythme moyen et seuil de la prochaine maintenance. */
   function buildChart(canvas, d, points) {
     if (!points.length || !window.Chart) return null;
+    // Clic sur un point : détail du relevé ; la rotation se met en pause comme pour tout autre clic.
+    var readingClick = window.PMReading.chartOptions(function () {
+      hold();
+      return { equipment: d, series: d.series };
+    });
 
     var last = points[points.length - 1];
     var plan = d.plans[0];
@@ -210,6 +228,8 @@
         maintainAspectRatio: false,
         animation: false,
         parsing: false,
+        onClick: readingClick.onClick,
+        onHover: readingClick.onHover,
         interaction: { mode: 'nearest', axis: 'x', intersect: false },
         scales: {
           x: {
@@ -284,8 +304,16 @@
     if (Date.now() < state.pausedUntil) return;
     $('[data-wall-paused]').prop('hidden', true);
     closeModal();
-    // Fin de pause : l'écran revient seul à sa vue par défaut.
-    if (state.filter) { state.filter = null; state.step = 0; render(); return; }
+    window.PMReading.close();
+    // Fin de pause : l'écran revient seul à sa vue par défaut (filtre et recherche effacés).
+    if (state.filter || state.search) {
+      state.filter = null;
+      state.search = '';
+      state.step = 0;
+      $('[data-wall-search]').val('').trigger('blur');
+      render();
+      return;
+    }
     var list = views();
     var cycle = pool(viewRows(list[state.view] === undefined ? null : list[state.view]));
     state.step++;
@@ -338,6 +366,18 @@
     if (list.length < 2) return;
     state.view = (state.view + 1) % list.length;
     state.filter = null;
+    selectRow(0);
+  });
+  // Recherche d'un engin : filtre la liste à la frappe ; Échap l'efface.
+  $(document).on('input', '[data-wall-search]', function () {
+    state.search = this.value.trim().toLowerCase();
+    selectRow(0);
+  });
+  $(document).on('keydown', '[data-wall-search]', function (e) {
+    if (e.key !== 'Escape' || this.value === '') return;
+    e.stopPropagation();
+    this.value = '';
+    state.search = '';
     selectRow(0);
   });
   $(document).on('click', '[data-wall-resume]', function () {
@@ -400,7 +440,7 @@
       $('[data-wall-modal-content]').html(modalHtml(d));
       icons();
       modal.chart = buildChart(document.getElementById('wall-modal-chart'), d,
-        d.series.filter(function (r) { return r.hour_meter !== null; }).map(function (r) { return { x: ts(r.at), y: r.hour_meter }; }));
+        seriesPoints(d));
     });
   }
 
@@ -430,6 +470,7 @@
   });
   // Tant qu'on consulte le détail, la fenêtre reste ouverte ; elle se ferme seule à la reprise de la rotation.
   $(document).on('mousemove', '[data-wall-modal]', function () { if (modal.id !== null) hold(); });
+  $(document).on('mousemove', '.reading-pop', hold);
 
   // ---------------------------------------------------------------- Plein écran, veille, curseur
   $(document).on('click', '[data-wall-fullscreen]', function () {
