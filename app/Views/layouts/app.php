@@ -20,6 +20,7 @@ $sections = [
         ['/work-orders', 'clipboard-list', 'nav.work_orders', 'workorder.view', 'overdue'],
         ['/preventive', 'calendar-clock', 'nav.preventive', 'preventive.view', 'preventive'],
         ['/meters', 'gauge', 'nav.meters', 'equipment.view', 'meter_soon meter_stale'],
+        ['/saisie', 'pencil', 'nav.meter_entry', 'meters.entry', null],
     ]],
     'fleet' => ['nav.section_fleet', [
         ['/equipment', 'truck', 'nav.equipment', 'equipment.view', 'down'],

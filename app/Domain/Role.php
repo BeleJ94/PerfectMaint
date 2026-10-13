@@ -13,8 +13,11 @@ enum Role: string
     case Manager = 'manager';
     case Technician = 'technician';
     case Viewer = 'viewer';
+    /** Agent de saisie : n'accède qu'à la feuille de saisie des index de ses sites. */
+    case Encoder = 'encoder';
 
     private const PERMISSIONS = [
+        'meters.entry' => ['admin', 'manager', 'technician', 'encoder'],
         'dashboard.view' => ['admin', 'manager', 'technician', 'viewer'],
         'equipment.view' => ['admin', 'manager', 'technician', 'viewer'],
         'equipment.manage' => ['admin', 'manager'],
@@ -43,6 +46,16 @@ enum Role: string
     public function can(string $permission): bool
     {
         return in_array($this->value, self::PERMISSIONS[$permission] ?? [], true);
+    }
+
+    /** Page d'accueil après connexion. */
+    public function homePath(): string
+    {
+        return match ($this) {
+            self::Technician => '/terrain',
+            self::Encoder => '/saisie',
+            default => '/',
+        };
     }
 
     public function labelKey(): string

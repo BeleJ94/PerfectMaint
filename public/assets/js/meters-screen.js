@@ -176,8 +176,13 @@
 
     var last = points[points.length - 1];
     var plan = d.plans[0];
-    // Peu de relevés : on montre les points, sinon un relevé isolé serait invisible.
-    var datasets = [{ label: t('js.meters.readings'), data: points, borderColor: LINE, backgroundColor: LINE, borderWidth: 3, pointRadius: points.length <= 3 ? 6 : 0, tension: 0 }];
+    // Chaque relevé est un point : gros quand il y en a peu, plus fin quand la période en contient beaucoup.
+    var unit = parseFloat(getComputedStyle(document.body).fontSize) / 20; // 1 en Full HD
+    var radius = (points.length <= 3 ? 6 : (points.length <= 45 ? 4 : (points.length <= 120 ? 3 : (points.length <= 400 ? 2.2 : 1.7)))) * unit;
+    var datasets = [{
+      label: t('js.meters.readings'), data: points, borderColor: LINE, backgroundColor: LINE,
+      borderWidth: points.length > 120 ? 2 : 3, pointRadius: radius, pointHoverRadius: radius + 3, tension: 0
+    }];
     var end = last.x;
     if (d.rate_hours > 0) {
       var horizon = plan && plan.remaining > 0 ? Math.min(30, Math.max(plan.days_left, 1)) : 14;

@@ -227,9 +227,12 @@
     afterDatasetsDraw: function (chart, args, opts) {
       var ctx = chart.ctx;
       var area = chart.chartArea;
+      var labelled = []; // positions des libellés déjà tracés : deux seuils proches ne se superposent pas
       (opts.lines || []).forEach(function (line) {
         var y = chart.scales.y.getPixelForValue(line.value);
         if (y < area.top - 1 || y > area.bottom + 1) return;
+        var free = labelled.every(function (other) { return Math.abs(other - y) >= 18; });
+        if (free) labelled.push(y);
         ctx.save();
         ctx.strokeStyle = line.color;
         ctx.lineWidth = 1.5;
@@ -239,6 +242,7 @@
         ctx.lineTo(area.right, y);
         ctx.stroke();
         ctx.setLineDash([]);
+        if (!free) { ctx.restore(); return; }
         ctx.font = '600 11px ' + Chart.defaults.font.family;
         ctx.textBaseline = 'bottom';
         var width = ctx.measureText(line.label).width;
@@ -310,7 +314,9 @@
     }
     var datasets = [{
       label: t('js.meters.readings'), data: points, borderColor: LINE, backgroundColor: LINE, borderWidth: 2,
-      pointRadius: points.length > 45 ? 0 : 3, pointHoverRadius: 5, tension: 0
+      // Chaque relevé reste visible : points plus petits quand la période en contient beaucoup.
+      pointRadius: points.length <= 45 ? 3 : (points.length <= 120 ? 2.5 : (points.length <= 400 ? 1.8 : 1.4)),
+      pointHoverRadius: 5, tension: 0
     }];
     if (projection.length) {
       datasets.push({

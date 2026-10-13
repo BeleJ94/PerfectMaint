@@ -21,8 +21,10 @@ final class AuthController extends Controller
 
     public function showLogin(Request $request): Response
     {
-        if ($this->ctx->auth->check()) {
-            return $this->redirect('/');
+        $user = $this->ctx->auth->user();
+        if ($user !== null) {
+            // Un encodeur n'a pas accès au tableau de bord : il retourne à son écran.
+            return $this->redirect($user->can('dashboard.view') ? '/' : $user->role->homePath());
         }
 
         return $this->render('auth/login', ['email' => ''], 200, 'layouts/minimal');
@@ -43,8 +45,8 @@ final class AuthController extends Controller
         $user = $result['user'];
         $this->logger->log('login', 'user', $user->id, null, null, null, $user->email);
 
-        // Les techniciens arrivent directement sur l'écran terrain.
-        return $this->redirect($user->role->value === 'technician' ? '/terrain' : '/');
+        // Les techniciens arrivent sur l'écran terrain, les encodeurs sur la saisie des index.
+        return $this->redirect($user->role->homePath());
     }
 
     public function logout(Request $request): Response

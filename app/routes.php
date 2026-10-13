@@ -10,6 +10,7 @@ use App\Controllers\EquipmentController;
 use App\Controllers\FieldController;
 use App\Controllers\ManagementController;
 use App\Controllers\MeterController;
+use App\Controllers\MeterEntryController;
 use App\Controllers\NotificationController;
 use App\Controllers\PartController;
 use App\Controllers\PreventiveController;
@@ -83,6 +84,10 @@ return static function (Router $r): void {
     $r->get('/meters/screen', [MeterController::class, 'screen'], ['permission' => 'equipment.view']);
     $r->get('/meters/data', [MeterController::class, 'data'], ['permission' => 'equipment.view']);
     $r->get('/meters/{id}/series', [MeterController::class, 'series'], ['permission' => 'equipment.view']);
+
+    // Saisie des index par les encodeurs (téléphone / tablette)
+    $r->get('/saisie', [MeterEntryController::class, 'index'], ['permission' => 'meters.entry']);
+    $r->post('/saisie/{id}', [MeterEntryController::class, 'save'], ['permission' => 'meters.entry']);
 
     // Pièces détachées
     $r->get('/parts', [PartController::class, 'index'], ['permission' => 'parts.view']);
