@@ -31,7 +31,7 @@ $availClass = $eq['availability'] === null ? '' : ($eq['availability'] >= 85 ? '
     </form>
 </div>
 
-<div class="kpis kpis--compact kpis--7">
+<div class="kpis kpis--compact kpis--8">
     <button type="button" class="kpi kpi--button kpi--hero"<?= drill('equipment', '/equipment/data', t('dashboard.availability'), $sp([]), '/equipment', '/equipment/{id}', $eqChips) ?>>
         <div class="kpi__label"><?= e(t('dashboard.availability')) ?></div>
         <div class="kpi__value kpi__value--<?= e($availClass) ?>"><?= $eq['availability'] === null ? '–' : e(format_number($eq['availability'], 1)) . '<small>%</small>' ?></div>
@@ -58,6 +58,11 @@ $availClass = $eq['availability'] === null ? '' : ($eq['availability'] >= 85 ? '
         <div class="kpi__value"><?= e($stats['preventive_due']) ?></div>
         <div class="kpi__hint"><?= e(t('dashboard.preventive_due_hint')) ?></div>
     </button>
+    <a class="kpi<?= $stats['meters']['due'] > 0 ? ' kpi--alert' : ($stats['meters']['soon'] > 0 ? ' kpi--warn' : '') ?>" href="<?= e(url('/meters', $siteQuery)) ?>">
+        <div class="kpi__label"><?= e(t('dashboard.meters')) ?></div>
+        <div class="kpi__value"><?= e($stats['meters']['due'] + $stats['meters']['soon']) ?></div>
+        <div class="kpi__hint"><?= e(t('dashboard.meters_hint', ['read' => $stats['meters']['read_today'], 'total' => $stats['meters']['equipment']])) ?></div>
+    </a>
     <button type="button" class="kpi kpi--button<?= $stats['parts_below_min'] > 0 ? ' kpi--alert' : '' ?>"<?= drill('procurement', '/procurement/data', t('dashboard.parts_low'), $sp(['level' => 'action']), '/procurement', '/parts/{id}', [
         ['label' => t('procurement.to_act'), 'params' => ['level' => 'action']],
         ['label' => t('level.out'), 'params' => ['level' => 'out']],

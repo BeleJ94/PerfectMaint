@@ -15,7 +15,7 @@ use App\Repositories\SiteRepository;
  */
 final class ActivityController extends Controller
 {
-    public const ENTITY_TYPES = ['equipment', 'work_order', 'preventive_plan', 'part', 'personnel', 'team', 'site', 'user', 'brand', 'model'];
+    public const ENTITY_TYPES = ['equipment', 'work_order', 'preventive_plan', 'part', 'personnel', 'team', 'site', 'user', 'brand', 'model', 'settings'];
 
     /** Actions journalisées (filtre « Action »). */
     public const ACTIONS = [

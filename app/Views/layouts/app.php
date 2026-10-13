@@ -19,6 +19,7 @@ $sections = [
     'maintenance' => ['nav.section_maintenance', [
         ['/work-orders', 'clipboard-list', 'nav.work_orders', 'workorder.view', 'overdue'],
         ['/preventive', 'calendar-clock', 'nav.preventive', 'preventive.view', 'preventive'],
+        ['/meters', 'gauge', 'nav.meters', 'equipment.view', 'meter_soon meter_stale'],
     ]],
     'fleet' => ['nav.section_fleet', [
         ['/equipment', 'truck', 'nav.equipment', 'equipment.view', 'down'],
@@ -37,6 +38,7 @@ $settings = [
     ['/sites', 'building-2', 'nav.sites_admin', 'sites.manage'],
     ['/users', 'users', 'nav.users', 'users.manage'],
     ['/catalog', 'tags', 'nav.catalog', 'equipment.manage'],
+    ['/settings/mail', 'mail', 'nav.mail_settings', 'settings.manage'],
     ['/activity', 'history', 'nav.activity', 'activity.view'],
 ];
 $settings = array_values(array_filter($settings, static fn (array $l) => $currentUser->can($l[3])));

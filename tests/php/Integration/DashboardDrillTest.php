@@ -97,7 +97,7 @@ final class DashboardDrillTest extends DatabaseTestCase
 
         $json = $this->json('/notifications');
         $byKey = array_column($json['items'], null, 'key');
-        self::assertSame(['down', 'critical', 'overdue'], array_keys($byKey));
+        self::assertSame(['down', 'critical', 'overdue', 'meter_stale'], array_keys($byKey), 'KAM-01 n\'a jamais été relevé');
         self::assertSame(3, $json['count']);
         self::assertSame(['status' => 'active', 'priority' => 'critical'], $byKey['critical']['drill']['params']);
         self::assertSame('work_orders', $byKey['overdue']['drill']['table']);

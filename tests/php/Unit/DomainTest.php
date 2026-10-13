@@ -6,6 +6,7 @@ namespace Tests\Unit;
 
 use App\Domain\EquipmentStatus;
 use App\Domain\EquipmentStatusResolver;
+use App\Domain\MeterForecast;
 use App\Domain\PreventiveSchedule;
 use App\Domain\Role;
 use App\Domain\WorkOrderStatus;
@@ -97,6 +98,44 @@ final class DomainTest extends TestCase
         self::assertTrue(PreventiveSchedule::isDue('2026-10-01', null, $today, null, 7), 'Dans l\'horizon');
         self::assertTrue(PreventiveSchedule::isDue('2027-01-01', 1500, $today, 1500), 'Compteur atteint');
         self::assertFalse(PreventiveSchedule::isDue(null, 1500, $today, 1499));
+    }
+
+    public function testMeterRateComesFromFirstAndLastReading(): void
+    {
+        $points = [
+            ['at' => '2026-10-01 08:00:00', 'value' => 1000],
+            ['at' => '2026-10-06 08:00:00', 'value' => 1040],
+            ['at' => '2026-10-11 08:00:00', 'value' => 1100],
+        ];
+        self::assertSame(10.0, MeterForecast::dailyRate($points));
+        self::assertNull(MeterForecast::dailyRate([$points[0]]), 'Un seul relevé');
+        self::assertNull(MeterForecast::dailyRate([$points[0], ['at' => '2026-10-01 14:00:00', 'value' => 1008]]), 'Relevés du même jour');
+    }
+
+    public function testMeterForecastProjectsDueDateAndStatus(): void
+    {
+        $today = new DateTimeImmutable('2026-10-12');
+
+        $ok = MeterForecast::project(1100, 1500, 500, 10.0, $today);
+        self::assertSame([400, 20, 40, '2026-11-21', 'ok'], [$ok['remaining'], $ok['pct'], $ok['days_left'], $ok['due_on'], $ok['status']]);
+
+        self::assertSame('soon', MeterForecast::project(1440, 1500, 500, 10.0, $today)['status'], 'Échéance prévue sous 7 jours');
+        self::assertSame('soon', MeterForecast::project(1460, 1500, 500, null, $today)['status'], '90 % de l\'intervalle, même sans rythme');
+
+        $unknown = MeterForecast::project(1100, 1500, 500, null, $today);
+        self::assertSame([null, null, 'ok'], [$unknown['days_left'], $unknown['due_on'], $unknown['status']]);
+
+        $due = MeterForecast::project(1520, 1500, 500, 10.0, $today);
+        self::assertSame([-20, 104, 0, null, 'due'], [$due['remaining'], $due['pct'], $due['days_left'], $due['due_on'], $due['status']]);
+    }
+
+    public function testMeterReadingFreshness(): void
+    {
+        $today = new DateTimeImmutable('2026-10-12');
+        self::assertSame(0, MeterForecast::daysSince('2026-10-12 06:30:00', $today));
+        self::assertFalse(MeterForecast::isStale(MeterForecast::daysSince('2026-10-11 18:00:00', $today)));
+        self::assertTrue(MeterForecast::isStale(MeterForecast::daysSince('2026-10-10 18:00:00', $today)));
+        self::assertTrue(MeterForecast::isStale(MeterForecast::daysSince(null, $today)), 'Jamais relevé');
     }
 
     public function testRolePermissions(): void

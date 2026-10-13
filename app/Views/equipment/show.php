@@ -284,7 +284,10 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
         </section>
 
         <section class="card">
-            <div class="card__title"><h2><?= e(t('equipment.readings')) ?></h2></div>
+            <div class="card__title">
+                <h2><?= e(t('equipment.readings')) ?></h2>
+                <a class="btn btn--sm" href="<?= e(url('/meters', ['equipment_id' => $item['id']])) ?>"><i data-lucide="trending-up"></i><?= e(t('js.meters.show_evolution')) ?></a>
+            </div>
             <?php if ($readings === []): ?>
                 <p class="empty"><?= e(t('equipment.no_reading')) ?></p>
             <?php else: ?>

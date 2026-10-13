@@ -44,6 +44,7 @@ final class App
             $c->get(Csrf::class),
             $config['security'],
         ));
+        $c->factory(\App\Services\MailTransport::class, static fn () => new \App\Services\SmtpMailTransport());
         // Le périmètre de sites découle de l'utilisateur authentifié : injecté dans tous les repositories.
         $c->factory(SiteScope::class, static fn (Container $c) => $c->get(Auth::class)->scope());
 

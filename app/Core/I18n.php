@@ -69,7 +69,7 @@ final class I18n
     }
 
     /** Préfixes de clés exposés au JavaScript (libellés de tableaux, statuts, messages). */
-    public const JS_PREFIXES = ['js.', 'fields.', 'status.', 'wo_status.', 'priority.', 'wo_type.', 'movement.', 'role.', 'entity.', 'action.', 'job.', 'shift.', 'team_kind.', 'cause.', 'part_type.', 'level.', 'fluid.'];
+    public const JS_PREFIXES = ['js.', 'fields.', 'status.', 'wo_status.', 'priority.', 'wo_type.', 'movement.', 'role.', 'entity.', 'action.', 'job.', 'shift.', 'team_kind.', 'cause.', 'part_type.', 'level.', 'fluid.', 'meter_status.'];
 
     /** @return array<string, string> */
     public function jsCatalogue(): array

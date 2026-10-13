@@ -9,10 +9,12 @@ use App\Controllers\DashboardController;
 use App\Controllers\EquipmentController;
 use App\Controllers\FieldController;
 use App\Controllers\ManagementController;
+use App\Controllers\MeterController;
 use App\Controllers\NotificationController;
 use App\Controllers\PartController;
 use App\Controllers\PreventiveController;
 use App\Controllers\ProcurementController;
+use App\Controllers\SettingsController;
 use App\Controllers\SiteController;
 use App\Controllers\SiteOverviewController;
 use App\Controllers\UserController;
@@ -75,6 +77,12 @@ return static function (Router $r): void {
     $r->post('/preventive/generate', [PreventiveController::class, 'generate'], ['permission' => 'preventive.manage']);
     $r->get('/preventive/{id}/edit', [PreventiveController::class, 'edit'], ['permission' => 'preventive.manage']);
     $r->post('/preventive/{id}', [PreventiveController::class, 'update'], ['permission' => 'preventive.manage']);
+
+    // Supervision des index (compteurs) et échéances projetées
+    $r->get('/meters', [MeterController::class, 'index'], ['permission' => 'equipment.view']);
+    $r->get('/meters/screen', [MeterController::class, 'screen'], ['permission' => 'equipment.view']);
+    $r->get('/meters/data', [MeterController::class, 'data'], ['permission' => 'equipment.view']);
+    $r->get('/meters/{id}/series', [MeterController::class, 'series'], ['permission' => 'equipment.view']);
 
     // Pièces détachées
     $r->get('/parts', [PartController::class, 'index'], ['permission' => 'parts.view']);
@@ -144,6 +152,12 @@ return static function (Router $r): void {
     $r->post('/users', [UserController::class, 'store'], ['permission' => 'users.manage']);
     $r->get('/users/{id}/edit', [UserController::class, 'edit'], ['permission' => 'users.manage']);
     $r->post('/users/{id}', [UserController::class, 'update'], ['permission' => 'users.manage']);
+
+    // Paramètres : envoi d'e-mails et alarmes par e-mail
+    $r->get('/settings/mail', [SettingsController::class, 'mail'], ['permission' => 'settings.manage']);
+    $r->post('/settings/mail', [SettingsController::class, 'saveMail'], ['permission' => 'settings.manage']);
+    $r->post('/settings/mail/test', [SettingsController::class, 'testMail'], ['permission' => 'settings.manage']);
+    $r->post('/settings/mail/alerts', [SettingsController::class, 'sendAlerts'], ['permission' => 'settings.manage']);
 
     $r->get('/activity', [ActivityController::class, 'index'], ['permission' => 'activity.view']);
     $r->get('/activity/data', [ActivityController::class, 'data'], ['permission' => 'activity.view']);

@@ -37,6 +37,7 @@ enum Role: string
         'reports.view' => ['admin', 'manager', 'viewer'],
         'sites.manage' => ['admin'],
         'users.manage' => ['admin'],
+        'settings.manage' => ['admin'],
     ];
 
     public function can(string $permission): bool

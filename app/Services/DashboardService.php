@@ -21,6 +21,7 @@ final class DashboardService
         private readonly WorkOrderRepository $workOrders,
         private readonly PreventivePlanRepository $plans,
         private readonly PartRepository $parts,
+        private readonly MeterMonitorService $meters,
     ) {
     }
 
@@ -42,6 +43,7 @@ final class DashboardService
             'work_orders' => $this->workOrders->kpis($siteId),
             'preventive_due' => $this->plans->countDue(PreventiveService::DEFAULT_HORIZON_DAYS, $siteId),
             'parts_below_min' => $this->parts->countBelowMin($siteId),
+            'meters' => $this->meters->summary($siteId),
             'weekly' => self::weeklySeries($this->workOrders->weeklyCreated(self::WEEKS, $siteId), new DateTimeImmutable('today')),
         ];
     }
