@@ -4,6 +4,7 @@ $view->share('pageScripts', ['js/entry.js']);
 $doneCount = count($sheet['done']);
 $total = $sheet['total'];
 ?>
+<?= $view->partial('entry/_nav', ['sites' => $sites, 'siteId' => $siteId, 'tab' => 'entry']) ?>
 <div class="entry-top">
     <div class="entry-progress" data-entry-progress>
         <div class="entry-progress__text">
@@ -13,16 +14,6 @@ $total = $sheet['total'];
         <div class="meter meter--good"><span data-entry-bar style="width: <?= e($total > 0 ? round($doneCount / $total * 100) : 0) ?>%"></span></div>
     </div>
     <div class="entry-tools">
-        <?php if (count($sites) > 1): ?>
-            <form method="get" action="<?= e(url('/saisie')) ?>">
-                <select name="site_id" class="input" data-autosubmit aria-label="<?= e(t('fields.site_id')) ?>">
-                    <option value=""><?= e(t('common.all_sites')) ?></option>
-                    <?php foreach ($sites as $site): ?>
-                        <option value="<?= e($site['id']) ?>"<?= (int) $site['id'] === $siteId ? ' selected' : '' ?>><?= e($site['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
-        <?php endif; ?>
         <input type="search" class="input" data-entry-search autocomplete="off" placeholder="<?= e(t('entry.search')) ?>" aria-label="<?= e(t('entry.search')) ?>">
     </div>
 </div>

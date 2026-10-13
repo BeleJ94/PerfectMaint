@@ -43,6 +43,47 @@ final class MeterEntryRepository extends Repository
     }
 
     /**
+     * Rapport d'une journée : chaque engin avec son dernier relevé d'index de ce jour-là (s'il y en a un),
+     * le nombre de relevés du jour et les index connus juste avant cette journée.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function report(string $date, ?int $siteId = null): array
+    {
+        [$scopeSql, $params] = $this->scope->clause('e.site_id');
+        $params += ['from' => $date . ' 00:00:00', 'from2' => $date . ' 00:00:00', 'from3' => $date . ' 00:00:00', 'from4' => $date . ' 00:00:00',
+            'to' => $date . ' 23:59:59', 'to2' => $date . ' 23:59:59'];
+        $siteSql = '';
+        if ($siteId !== null) {
+            $siteSql = ' AND e.site_id = :site';
+            $params['site'] = $siteId;
+        }
+        $isIndex = '(r.hour_meter IS NOT NULL OR r.odometer_km IS NOT NULL)';
+
+        return $this->db->fetchAll(
+            "SELECT e.id, e.code, e.name, e.brand, e.model, s.name AS site,
+                    d.recorded_at, d.recorded_by, d.hour_meter, d.odometer_km, d.fuel_level, d.note,
+                    CONCAT(u.first_name, ' ', u.last_name) AS recorded_by_name,
+                    (SELECT COUNT(*) FROM meter_readings r WHERE r.equipment_id = e.id AND $isIndex
+                        AND r.recorded_at BETWEEN :from AND :to) AS readings,
+                    (SELECT r.hour_meter FROM meter_readings r WHERE r.equipment_id = e.id AND r.hour_meter IS NOT NULL
+                        AND r.recorded_at < :from2 ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1) AS prev_hours,
+                    (SELECT r.odometer_km FROM meter_readings r WHERE r.equipment_id = e.id AND r.odometer_km IS NOT NULL
+                        AND r.recorded_at < :from3 ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1) AS prev_km
+               FROM equipment e
+               JOIN sites s ON s.id = e.site_id
+               LEFT JOIN meter_readings d ON d.id = (
+                    SELECT r.id FROM meter_readings r
+                     WHERE r.equipment_id = e.id AND $isIndex AND r.recorded_at BETWEEN :from4 AND :to2
+                     ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1)
+               LEFT JOIN users u ON u.id = d.recorded_by
+              WHERE $scopeSql AND e.is_archived = 0 $siteSql
+              ORDER BY e.code",
+            $params
+        );
+    }
+
+    /**
      * Les deux derniers relevés d'index d'un engin, du plus récent au plus ancien.
      *
      * @return list<array<string, mixed>>

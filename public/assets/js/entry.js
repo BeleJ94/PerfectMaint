@@ -6,6 +6,10 @@
   'use strict';
 
   var t = window.PM.t;
+
+  // Rapport de saisie : le choix d'une date recharge la page (les listes déroulantes le font déjà).
+  $(document).on('change', 'input[data-autosubmit]', function () { if (this.value) this.form.submit(); });
+
   var $todo = $('[data-entry-todo]');
   var $done = $('[data-entry-done-list]');
   if (!$todo.length) return;

@@ -63,6 +63,58 @@ final class MeterEntryTest extends DatabaseTestCase
         self::assertSame(403, $this->http($this->session, 'POST', "/equipment/{$this->equipment}/readings", self::CSRF + ['hour_meter' => '1001'], self::AJAX)->status);
     }
 
+    public function testWorkSiteIsShownAndCanBeSwitched(): void
+    {
+        $single = $this->http($this->session, 'GET', '/saisie')->body;
+        self::assertStringContainsString('Site KAMAO', $single, 'Site d\'affectation affiché');
+        self::assertStringNotContainsString('id="entry-site"', $single, 'Un seul site : pas de sélecteur');
+
+        $this->createEquipment($this->metalkol, 'MET-01');
+        $both = Session::memory(['auth_user_id' => $this->createUser('encoder', [$this->kamao, $this->metalkol]), '_csrf_token' => str_repeat('a', 64)]);
+        $page = $this->http($both, 'GET', '/saisie')->body;
+        self::assertStringContainsString('id="entry-site"', $page);
+        self::assertStringContainsString('KAM-01', $page, 'Premier site par défaut');
+        self::assertStringNotContainsString('MET-01', $page);
+
+        $page = $this->http($both, 'GET', "/saisie?site_id={$this->metalkol}")->body;
+        self::assertStringContainsString('MET-01', $page);
+        self::assertStringNotContainsString('KAM-01', $page);
+        self::assertStringContainsString('MET-01', $this->http($both, 'GET', '/saisie/rapport')->body, 'Choix conservé d\'un écran à l\'autre');
+
+        $all = $this->http($both, 'GET', '/saisie?site_id=')->body;
+        self::assertStringContainsString('KAM-01', $all);
+        self::assertStringContainsString('MET-01', $all);
+
+        // Un site hors de son affectation n'est jamais affiché.
+        $other = $this->createSite('KINGAKILA');
+        $this->createEquipment($other, 'KIN-01');
+        self::assertStringNotContainsString('KIN-01', $this->http($both, 'GET', "/saisie?site_id=$other")->body);
+    }
+
+    public function testReportOfAPastDayIsReadOnly(): void
+    {
+        $this->db->execute(
+            'INSERT INTO meter_readings (equipment_id, hour_meter, recorded_at) VALUES (:e, 980, :at)',
+            ['e' => $this->equipment, 'at' => date('Y-m-d 07:00:00', strtotime('-2 days'))]
+        );
+        $this->createEquipment($this->kamao, 'KAM-02');
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+
+        $page = $this->http($this->session, 'GET', "/saisie/rapport?date=$yesterday");
+        self::assertSame(200, $page->status);
+        self::assertStringContainsString('value="' . $yesterday . '"', $page->body);
+        self::assertMatchesRegularExpression('/KAM-01.*\+20 h.*KAM-02/s', $page->body, 'Relevé de la veille avec son écart, puis engin non relevé');
+        self::assertStringNotContainsString('name="hour_meter"', $page->body, 'Aucun champ de saisie');
+        self::assertStringNotContainsString('data-entry-form', $page->body);
+        self::assertSame(1000, $this->hours());
+
+        // Date future ou invalide : retour à aujourd'hui.
+        foreach (['2999-01-01', 'n-importe-quoi'] as $date) {
+            self::assertStringContainsString('value="' . date('Y-m-d') . '"', $this->http($this->session, 'GET', "/saisie/rapport?date=$date")->body);
+        }
+        self::assertSame(403, $this->http(Session::memory(['auth_user_id' => $this->createUser('viewer', [$this->kamao])]), 'GET', '/saisie/rapport')->status);
+    }
+
     public function testReadingIsSavedUnderTheEncoderName(): void
     {
         [$status, $json] = $this->post($this->equipment, ['hour_meter' => '1012', 'fuel_level' => '60']);

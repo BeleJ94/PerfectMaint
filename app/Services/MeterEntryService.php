@@ -52,6 +52,34 @@ final class MeterEntryService
         return ['todo' => $todo, 'done' => $done, 'total' => count($todo) + count($done)];
     }
 
+    /**
+     * Rapport de saisie d'une journée (lecture seule).
+     *
+     * @return array{read: list<array>, missing: list<array>, total: int, mine: int}
+     *   read = engins relevés ce jour-là (avec l'écart depuis le relevé précédent), missing = engins non relevés
+     */
+    public function report(\DateTimeImmutable $date, ?int $siteId): array
+    {
+        $userId = $this->auth->user()?->id;
+        $read = [];
+        $missing = [];
+        $mine = 0;
+        foreach ($this->entries->report($date->format('Y-m-d'), $siteId) as $row) {
+            $row['label'] = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: $row['name'];
+            if ($row['recorded_at'] === null) {
+                $missing[] = $row;
+                continue;
+            }
+            $row['delta_hours'] = $row['hour_meter'] !== null && $row['prev_hours'] !== null ? (int) $row['hour_meter'] - (int) $row['prev_hours'] : null;
+            $row['delta_km'] = $row['odometer_km'] !== null && $row['prev_km'] !== null ? (int) $row['odometer_km'] - (int) $row['prev_km'] : null;
+            $row['own'] = $row['recorded_by'] !== null && (int) $row['recorded_by'] === $userId;
+            $mine += $row['own'] ? 1 : 0;
+            $read[] = $row;
+        }
+
+        return ['read' => $read, 'missing' => $missing, 'total' => count($read) + count($missing), 'mine' => $mine];
+    }
+
     /** Ligne de la feuille pour un engin (404 hors périmètre). */
     public function row(int $equipmentId): array
     {
