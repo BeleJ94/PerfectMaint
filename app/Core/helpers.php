@@ -95,6 +95,31 @@ function label(string $group, ?string $value): string
     return $value === null || $value === '' ? '' : t($group . '.' . $value);
 }
 
+/** Libellé d'un type de document (traduction « doc_type.code » si elle existe, sinon nom saisi). */
+function doc_type_label(array $type): string
+{
+    $key = 'doc_type.' . ($type['code'] ?? $type['type_code'] ?? '');
+
+    return \App\Core\I18n::current()->has($key) ? t($key) : (string) ($type['name'] ?? $type['type_name'] ?? '');
+}
+
+/** Pastille d'échéance d'un document : expirée, à renouveler, valide. */
+function document_badge(?array $document): string
+{
+    if ($document === null) {
+        return '<span class="badge badge--neutral">' . e(t('documents.missing')) . '</span>';
+    }
+    $days = $document['days_left'] !== null ? (int) $document['days_left'] : null;
+    [$class, $text] = match ($document['state']) {
+        'expired' => ['breakdown', t('documents.expired_since', ['days' => -$days])],
+        'soon' => ['waiting_part', t('documents.days_left', ['days' => $days])],
+        'valid' => ['available', t('documents.valid')],
+        default => ['neutral', t('documents.no_expiry')],
+    };
+
+    return '<span class="badge badge--' . $class . '">' . e($text) . '</span>';
+}
+
 /** Pastille d'état d'engin (couleurs de la charte). */
 function status_badge(?string $status): string
 {

@@ -11,6 +11,7 @@ const defs = Tables.definitions(t, 'fr');
 
 const REPOSITORIES = {
   equipment: 'EquipmentRepository',
+  documents: 'EquipmentDocumentRepository',
   work_orders: 'WorkOrderRepository',
   preventive: 'PreventivePlanRepository',
   parts: 'PartRepository',
@@ -48,6 +49,7 @@ test('le rendu HTML échappe les données utilisateur', () => {
   const evil = '<script>alert(1)</script>';
   const rows = {
     equipment: { code: evil, name: evil, brand: evil, status: 'breakdown', site: evil, category: evil },
+    documents: { code: evil, equipment_name: evil, plate_number: evil, site: evil, type_label: evil, issuer: evil, reference: evil, state: 'expired', state_label: evil, id: 1, file_url: evil, renew_url: evil },
     work_orders: { reference: evil, title: evil, equipment_code: evil, equipment_name: evil, site: evil, type: 'corrective', priority: 'high', status: 'open', assignee: evil, immobilizing: 1, overdue: 1, due_date: '2026-01-01' },
     preventive: { title: evil, equipment_code: evil, equipment_name: evil, site: evil, is_active: 0 },
     parts: { reference: evil, name: evil, unit: evil, quantity: 1, sites_below_min: 1, manufacturer: evil, brands: evil, part_type: 'tyre', is_wear_part: 1 },

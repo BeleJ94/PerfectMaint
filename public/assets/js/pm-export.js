@@ -180,7 +180,8 @@
     preventive: { fg: '5B3FA6', bg: 'F3F0FB' },
     preventive_planned: { fg: '1F4E79', bg: 'E8EEF4' },
     work_order: { fg: 'B54708', bg: 'FCEFE3' },
-    contract: { fg: '5E6166', bg: 'EEEFF0' }
+    contract: { fg: '5E6166', bg: 'EEEFF0' },
+    document: { fg: '0E7490', bg: 'E6F4F7' }
   };
 
   /**

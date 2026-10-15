@@ -6,6 +6,7 @@ use App\Controllers\ActivityController;
 use App\Controllers\AuthController;
 use App\Controllers\CatalogController;
 use App\Controllers\DashboardController;
+use App\Controllers\DocumentController;
 use App\Controllers\EquipmentController;
 use App\Controllers\FieldController;
 use App\Controllers\ManagementController;
@@ -50,10 +51,20 @@ return static function (Router $r): void {
     $r->post('/equipment/{id}/archive', [EquipmentController::class, 'archive'], ['permission' => 'equipment.manage']);
     $r->post('/equipment/{id}/readings', [EquipmentController::class, 'reading'], ['permission' => 'equipment.reading']);
     $r->post('/equipment/{id}/fluids', [EquipmentController::class, 'fluid'], ['permission' => 'equipment.reading']);
+    $r->post('/equipment/{id}/documents', [EquipmentController::class, 'storeDocument'], ['permission' => 'documents.manage']);
+    $r->post('/equipment/{id}/documents/{documentId}', [EquipmentController::class, 'updateDocument'], ['permission' => 'documents.manage']);
+    $r->get('/equipment/{id}/documents/{documentId}/file', [EquipmentController::class, 'documentFile'], ['permission' => 'equipment.view']);
+    $r->post('/equipment/{id}/documents/{documentId}/delete', [EquipmentController::class, 'deleteDocument'], ['permission' => 'documents.manage']);
     $r->post('/equipment/{id}/photos', [EquipmentController::class, 'uploadPhoto'], ['permission' => 'equipment.photo']);
     $r->get('/equipment/{id}/photos/{photoId}', [EquipmentController::class, 'photo'], ['permission' => 'equipment.view']);
     $r->post('/equipment/{id}/photos/{photoId}/primary', [EquipmentController::class, 'primaryPhoto'], ['permission' => 'equipment.photo']);
     $r->post('/equipment/{id}/photos/{photoId}/delete', [EquipmentController::class, 'deletePhoto'], ['permission' => 'equipment.manage']);
+
+    // Documents de bord (assurance, contrôle technique, vignette, stationnement…)
+    $r->get('/documents', [DocumentController::class, 'index'], ['permission' => 'equipment.view']);
+    $r->get('/documents/data', [DocumentController::class, 'data'], ['permission' => 'equipment.view']);
+    $r->get('/documents/create', [DocumentController::class, 'create'], ['permission' => 'documents.manage']);
+    $r->post('/documents', [DocumentController::class, 'store'], ['permission' => 'documents.manage']);
 
     // Ordres de travail
     $r->get('/work-orders', [WorkOrderController::class, 'index'], ['permission' => 'workorder.view']);

@@ -7,13 +7,14 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Repositories\AlertRepository;
+use App\Repositories\EquipmentDocumentRepository;
 use App\Repositories\EquipmentRepository;
 use App\Repositories\ManagementRepository;
 use App\Repositories\ProcurementRepository;
 use App\Repositories\SiteRepository;
 use DateTimeImmutable;
 
-/** Pilotage : alertes coût, planning d'activités (jour / semaine / mois), rapports de direction. */
+/** Pilotage : alertes coût et échéances, planning d'activités (jour / semaine / mois), rapports de direction. */
 final class ManagementController extends Controller
 {
     public const PERIODS = [7, 30, 90, 365];
@@ -25,6 +26,7 @@ final class ManagementController extends Controller
         private readonly EquipmentRepository $equipment,
         private readonly ProcurementRepository $procurement,
         private readonly SiteRepository $sites,
+        private readonly EquipmentDocumentRepository $documents,
     ) {
         parent::__construct($ctx);
     }
@@ -41,6 +43,7 @@ final class ManagementController extends Controller
             'wear' => $this->alerts->prematureWear($siteId),
             'overuse' => $this->alerts->lubricantOveruse($siteId),
             'contracts' => $this->equipment->contractsEnding(30, $siteId),
+            'documents' => $this->documents->expiring($siteId),
             'stockOut' => (int) $summary['out_count'],
             'stockLow' => (int) $summary['low_count'],
         ]);

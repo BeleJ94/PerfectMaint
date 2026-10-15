@@ -211,6 +211,7 @@
           $(row).addClass('row-link').attr('data-href', Core.fillUrl(rowLink, data)).attr('tabindex', '0');
         }
       },
+      drawCallback: function () { icons(); },
       initComplete: function () { dtSearchPlaceholder(this.api()); }
     });
   });

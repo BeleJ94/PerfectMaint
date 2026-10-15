@@ -213,6 +213,54 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
     </div>
 
     <div>
+        <section class="card" id="documents">
+            <div class="card__title"><h2><?= e(t('documents.title')) ?></h2></div>
+            <ul class="doc-list">
+                <?php foreach ($documents as $group): ?>
+                    <?php $doc = $group['current']; ?>
+                    <li class="doc-list__item<?= $doc !== null ? ' doc-list__item--' . e($doc['state']) : '' ?>">
+                        <div class="doc-list__head">
+                            <strong><?= e(doc_type_label($group['type'])) ?></strong>
+                            <?= document_badge($doc) ?>
+                        </div>
+                        <?php if ($doc !== null): ?>
+                            <div class="doc-list__meta">
+                                <?= e(implode(' · ', array_filter([$doc['issuer'], $doc['reference']]))) ?>
+                                <?php if ($doc['expires_at']): ?><span class="nowrap"><?= e(t('documents.until', ['date' => format_date($doc['expires_at'])])) ?></span><?php endif; ?>
+                            </div>
+                            <?php if ($doc['note']): ?><div class="muted small"><?= e($doc['note']) ?></div><?php endif; ?>
+                            <?php if ($doc['file_name']): ?>
+                                <a class="doc-file small" href="<?= e(url($eqUrl . '/documents/' . $doc['id'] . '/file')) ?>" target="_blank" rel="noopener"><i data-lucide="paperclip"></i><?= e($doc['original_name'] ?: t('documents.current_file')) ?></a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <?php if ($documentTypes !== [] || $group['history'] !== []): ?>
+                            <div class="doc-list__tools">
+                                <?php if ($documentTypes !== []): ?>
+                                    <button type="button" class="btn btn--sm" data-open="#doc-add-<?= e($group['type']['id']) ?>"><i data-lucide="<?= $doc ? 'refresh-cw' : 'plus' ?>"></i><?= e($doc ? t('documents.renew') : t('common.add')) ?></button>
+                                    <?php if ($doc !== null): ?>
+                                        <button type="button" class="icon-btn" data-open="#doc-edit-<?= e($doc['id']) ?>" title="<?= e(t('common.edit')) ?>" aria-label="<?= e(t('common.edit')) ?>"><i data-lucide="pencil"></i></button>
+                                        <form method="post" action="<?= e(url($eqUrl . '/documents/' . $doc['id'] . '/delete')) ?>" data-confirm="<?= e(t('documents.delete_confirm')) ?>">
+                                            <?= csrf_field() ?><button type="submit" class="icon-btn icon-btn--danger" title="<?= e(t('common.delete')) ?>" aria-label="<?= e(t('common.delete')) ?>"><i data-lucide="trash-2"></i></button>
+                                        </form>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($group['history'] !== []): ?>
+                            <details class="crew-history">
+                                <summary><?= e(t('documents.history', ['count' => count($group['history'])])) ?></summary>
+                                <ul class="timeline timeline--dense">
+                                    <?php foreach ($group['history'] as $old): ?>
+                                        <li><?= e(implode(' · ', array_filter([$old['issuer'], $old['reference']])) ?: '—') ?><?php if ($old['file_name']): ?> <a href="<?= e(url($eqUrl . '/documents/' . $old['id'] . '/file')) ?>" target="_blank" rel="noopener" title="<?= e($old['original_name'] ?? '') ?>"><i data-lucide="paperclip"></i></a><?php endif; ?><time><?= e(format_date($old['issued_at']) ?: '…') ?> → <?= e(format_date($old['expires_at']) ?: '…') ?></time></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </details>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+
         <section class="card">
             <div class="card__title">
                 <h2><?= e(t('equipment.crew')) ?></h2>
@@ -447,6 +495,43 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
         <?php endif; ?>
     </form>
 </template>
+<?php endif; ?>
+
+<?php if ($documentTypes !== []): ?>
+<?php
+$documentForm = static function (string $action, string $titleText, array $doc, int $typeId) use ($documentTypes, $item, $view, $eqUrl): string {
+    ob_start(); ?>
+    <form method="post" action="<?= e(url($action)) ?>" class="grid" style="text-align:left" enctype="multipart/form-data">
+        <?= csrf_field() ?>
+        <h3 class="dialog-title"><i data-lucide="file-badge"></i><?= e($titleText) ?> · <?= e($item['code']) ?></h3>
+        <div class="field">
+            <label class="required"><?= e(t('fields.document_type_id')) ?></label>
+            <select name="document_type_id" class="input" required>
+                <?php foreach ($documentTypes as $type): ?>
+                    <option value="<?= e($type['id']) ?>"<?= (int) $type['id'] === $typeId ? ' selected' : '' ?>><?= e(doc_type_label($type)) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-grid">
+            <?= $view->partial('partials/document_fields', ['doc' => $doc,
+                'fileUrl' => !empty($doc['file_name']) ? url($eqUrl . '/documents/' . $doc['id'] . '/file') : null]) ?>
+        </div>
+    </form>
+    <?php return (string) ob_get_clean();
+};
+?>
+<?php foreach ($documents as $group): ?>
+    <?php $prev = $group['current']; ?>
+    <template id="doc-add-<?= e($group['type']['id']) ?>">
+        <?= $documentForm($eqUrl . '/documents', $prev ? t('documents.renew') : t('documents.add'),
+            $prev ? ['issuer' => $prev['issuer']] : [], (int) $group['type']['id']) ?>
+    </template>
+    <?php if ($prev !== null): ?>
+        <template id="doc-edit-<?= e($prev['id']) ?>">
+            <?= $documentForm($eqUrl . '/documents/' . $prev['id'], t('documents.edit'), $prev, (int) $group['type']['id']) ?>
+        </template>
+    <?php endif; ?>
+<?php endforeach; ?>
 <?php endif; ?>
 
 <?php if ($currentUser->can('equipment.status')): ?>

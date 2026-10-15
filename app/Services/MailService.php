@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Core\Database;
 use App\Core\ValidationException;
 use App\Core\Validator;
+use App\Repositories\EquipmentDocumentRepository;
 use App\Repositories\SettingsRepository;
 
 /**
@@ -33,6 +34,7 @@ final class MailService
         private readonly NotificationService $notifications,
         private readonly MeterMonitorService $meters,
         private readonly ActivityLogger $logger,
+        private readonly EquipmentDocumentRepository $documents,
     ) {
     }
 
@@ -189,6 +191,32 @@ final class MailService
             $html .= '</table>';
             if (count($urgent) > self::DIGEST_ROWS) {
                 $more = t('mail.alerts_more', ['count' => count($urgent) - self::DIGEST_ROWS]);
+                $html .= '<p style="color:#5B6573">' . self::h($more) . '</p>';
+                $text .= $more . "\n";
+            }
+        }
+
+        $documents = $this->documents->expiring();
+        if ($documents !== []) {
+            $cell = 'style="padding:6px 10px;border-bottom:1px solid #DDE1E6;text-align:left"';
+            $html .= '<h3 style="margin:20px 0 8px;font-size:15px">' . self::h(t('mail.alerts_documents')) . '</h3>'
+                . '<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px"><tr>';
+            foreach (['fields.equipment_id', 'fields.site_id', 'fields.document_type_id', 'fields.document_reference', 'fields.expires_at'] as $heading) {
+                $html .= "<th $cell>" . self::h(t($heading)) . '</th>';
+            }
+            $html .= '</tr>';
+            $text .= "\n" . t('mail.alerts_documents') . "\n";
+            foreach (array_slice($documents, 0, self::DIGEST_ROWS) as $doc) {
+                $days = (int) $doc['days_left'];
+                $when = format_date($doc['expires_at']) . ' (' . ($days < 0 ? t('documents.expired_since', ['days' => -$days]) : t('documents.days_left', ['days' => $days])) . ')';
+                $html .= "<tr><td $cell><strong>" . self::h($doc['equipment_code']) . "</strong></td><td $cell>" . self::h($doc['site']) . "</td><td $cell>" . self::h(doc_type_label($doc))
+                    . "</td><td $cell>" . self::h(trim(($doc['issuer'] ?? '') . ' ' . ($doc['reference'] ?? ''))) . "</td><td $cell><span style=\"color:" . ($days < 0 ? '#B42318' : '#B54708') . '">'
+                    . self::h($when) . '</span></td></tr>';
+                $text .= sprintf("- %s (%s) : %s, %s\n", $doc['equipment_code'], $doc['site'], doc_type_label($doc), $when);
+            }
+            $html .= '</table>';
+            if (count($documents) > self::DIGEST_ROWS) {
+                $more = t('mail.alerts_more', ['count' => count($documents) - self::DIGEST_ROWS]);
                 $html .= '<p style="color:#5B6573">' . self::h($more) . '</p>';
                 $text .= $more . "\n";
             }

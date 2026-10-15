@@ -4,7 +4,7 @@
  * @var DateTimeImmutable $to  @var string $prev  @var string $next  @var array $events  @var array $byDay  @var int $overdue
  */
 $today = date('Y-m-d');
-$kindIcons = ['preventive' => 'calendar-clock', 'preventive_planned' => 'calendar-check', 'work_order' => 'wrench', 'contract' => 'file-clock'];
+$kindIcons = ['preventive' => 'calendar-clock', 'preventive_planned' => 'calendar-check', 'work_order' => 'wrench', 'contract' => 'file-clock', 'document' => 'file-badge'];
 $locale = \App\Core\I18n::current()->locale();
 $dayNames = $locale === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 $monthNames = $locale === 'en'
@@ -77,6 +77,13 @@ foreach ($events as $i => $ev) {
                 $editLabel = t('planning.edit_contract');
             }
             break;
+        case 'document':
+            $fields[] = [t('fields.document_type_id'), $ev['document_type']];
+            $fields[] = [t('fields.issuer'), $ev['issuer'] ?? '—'];
+            $fields[] = [t('fields.document_reference'), $ev['reference'] ?? '—'];
+            $fields[] = [t('documents.period'), (format_date($ev['issued_at']) ?: '…') . ' → ' . format_date($ev['date'])];
+            $viewUrl = url('/equipment/' . $ev['equipment_id']) . '#documents';
+            break;
     }
     $payloadEvents[] = [
         'kind' => $ev['kind'], 'kindLabel' => label('planning', 'kind_' . $ev['kind']), 'icon' => $kindIcons[$ev['kind']],
@@ -105,12 +112,14 @@ $planningPayload = [
             'preventive_planned' => label('planning', 'kind_preventive_planned'),
             'work_order' => label('planning', 'kind_work_order'),
             'contract' => label('planning', 'kind_contract'),
+            'document' => label('planning', 'kind_document'),
         ],
         'short' => [
             'preventive' => t('planning.short_preventive'),
             'preventive_planned' => t('planning.short_preventive_planned'),
             'work_order' => t('planning.short_work_order'),
             'contract' => t('planning.short_contract'),
+            'document' => t('planning.short_document'),
         ],
         'open' => t('planning.open'),
         'close' => t('js.close'),
@@ -159,7 +168,7 @@ $planningPayload = [
 </div>
 
 <div class="legend">
-    <?php foreach (['preventive', 'preventive_planned', 'work_order', 'contract'] as $kind): ?>
+    <?php foreach (['preventive', 'preventive_planned', 'work_order', 'contract', 'document'] as $kind): ?>
         <span class="legend__item"><span class="ev-dot ev-dot--<?= e($kind) ?>"></span><?= e(label('planning', 'kind_' . $kind)) ?> <b><?= e($counts[$kind] ?? 0) ?></b></span>
     <?php endforeach; ?>
 </div>

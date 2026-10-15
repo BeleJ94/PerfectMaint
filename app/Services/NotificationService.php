@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Repositories\AlertRepository;
+use App\Repositories\EquipmentDocumentRepository;
 use App\Repositories\EquipmentRepository;
 use App\Repositories\PreventivePlanRepository;
 use App\Repositories\ProcurementRepository;
@@ -23,6 +24,7 @@ final class NotificationService
         private readonly ProcurementRepository $procurement,
         private readonly AlertRepository $alerts,
         private readonly MeterMonitorService $meters,
+        private readonly EquipmentDocumentRepository $documents,
     ) {
     }
 
@@ -66,6 +68,10 @@ final class NotificationService
         }
         $add('contracts', 'warn', 'file-clock', count($this->equipment->contractsEnding(30)),
             $spec('equipment', '/equipment/data', t('site.contracts_ending'), ['contract_days' => '30'], '/equipment', '/equipment/{id}'));
+        $documents = $this->documents->expiring();
+        $expired = count(array_filter($documents, static fn (array $d) => (int) $d['days_left'] < 0));
+        $add('documents_expired', 'bad', 'file-x', $expired, null, url('/alerts') . '#documents');
+        $add('documents_soon', 'warn', 'file-clock', count($documents) - $expired, null, url('/alerts') . '#documents');
         $add('wear', 'warn', 'trending-down', count($this->alerts->prematureWear()), null, url('/alerts') . '#wear');
         $add('overuse', 'warn', 'droplets', count($this->alerts->lubricantOveruse()), null, url('/alerts') . '#overuse');
 

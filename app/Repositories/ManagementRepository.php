@@ -8,7 +8,8 @@ namespace App\Repositories;
 final class ManagementRepository extends Repository
 {
     /**
-     * Événements planifiés entre $from et $to inclus : préventifs à échéance, OT ouverts à échéance, fins de contrat.
+     * Événements planifiés entre $from et $to inclus : préventifs à échéance, OT ouverts à échéance, fins de contrat,
+     * échéances des documents (assurance, contrôle technique…).
      *
      * @return list<array{date: string, kind: string, title: string, subtitle: string, site: string, id: int, equipment_id: int, overdue: bool, priority: ?string}>
      */
@@ -35,6 +36,12 @@ final class ManagementRepository extends Repository
                 'site' => $r['site'], 'id' => (int) $r['equipment_id'], 'equipment_id' => (int) $r['equipment_id'], 'overdue' => false, 'priority' => null,
                 'code' => $r['code'], 'equipment_name' => $r['equipment_name'], 'ownership' => $r['ownership'], 'contract_ref' => $r['contract_ref'],
                 'contract_party' => $r['contract_party'], 'contract_start' => $r['contract_start']];
+        }
+        foreach ($this->documentsDue($from, $to, $siteId) as $r) {
+            $events[] = ['date' => $r['d'], 'kind' => 'document', 'title' => doc_type_label($r) . ($r['reference'] ? ' · ' . $r['reference'] : ''),
+                'subtitle' => $r['code'], 'site' => $r['site'], 'id' => (int) $r['equipment_id'], 'equipment_id' => (int) $r['equipment_id'],
+                'overdue' => $r['d'] < $today, 'priority' => null, 'code' => $r['code'], 'equipment_name' => $r['equipment_name'],
+                'document_type' => doc_type_label($r), 'issuer' => $r['issuer'], 'reference' => $r['reference'], 'issued_at' => $r['issued_at']];
         }
         usort($events, static fn (array $a, array $b) => [$a['date'], $a['kind']] <=> [$b['date'], $b['kind']]);
 
@@ -87,6 +94,24 @@ final class ManagementRepository extends Repository
                LEFT JOIN users u ON u.id = w.assigned_to
               WHERE w.status IN ('open', 'in_progress', 'waiting_part') AND w.preventive_plan_id IS NULL
                 AND w.due_date BETWEEN :f AND :t AND $scopeSql $siteSql",
+            ['f' => $from, 't' => $to] + $params
+        );
+    }
+
+    /** Échéances des documents en vigueur (le plus récent de chaque type par engin). */
+    private function documentsDue(string $from, string $to, ?int $siteId): array
+    {
+        [$scopeSql, $params] = $this->scope->clause('e.site_id');
+        $siteSql = $this->siteFilter('e.site_id', $siteId, $params);
+
+        return $this->db->fetchAll(
+            "SELECT e.id AS equipment_id, e.code, e.name AS equipment_name, d.issuer, d.reference, d.issued_at, d.expires_at AS d,
+                    t.code AS type_code, t.name AS type_name, s.name AS site
+               FROM equipment_documents d
+               JOIN document_types t ON t.id = d.document_type_id AND t.is_active = 1
+               JOIN equipment e ON e.id = d.equipment_id AND e.is_archived = 0
+               JOIN sites s ON s.id = e.site_id AND s.is_active = 1
+              WHERE d.expires_at BETWEEN :f AND :t AND " . EquipmentDocumentRepository::CURRENT . " AND $scopeSql $siteSql",
             ['f' => $from, 't' => $to] + $params
         );
     }

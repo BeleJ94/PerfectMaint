@@ -24,6 +24,7 @@ $sections = [
     ]],
     'fleet' => ['nav.section_fleet', [
         ['/equipment', 'truck', 'nav.equipment', 'equipment.view', 'down'],
+        ['/documents', 'file-badge', 'nav.documents', 'equipment.view', 'documents_expired documents_soon'],
         ['/teams', 'users-round', 'nav.teams', 'personnel.view', null],
     ]],
     'stores' => ['nav.section_stores', [

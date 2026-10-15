@@ -21,7 +21,7 @@ abstract class DatabaseTestCase extends TestCase
     protected const PASSWORD = 'Secret-Password-42';
 
     /** Tables conservées entre les tests (référentiels issus des migrations). */
-    private const KEEP = ['schema_migrations', 'equipment_categories', 'equipment_brands', 'equipment_models'];
+    private const KEEP = ['schema_migrations', 'equipment_categories', 'equipment_brands', 'equipment_models', 'document_types'];
 
     protected Database $db;
 

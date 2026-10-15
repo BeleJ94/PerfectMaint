@@ -14,6 +14,7 @@ use App\Repositories\ActivityLogRepository;
 use App\Repositories\AssignmentRepository;
 use App\Repositories\PersonnelRepository;
 use App\Repositories\CatalogRepository;
+use App\Repositories\EquipmentDocumentRepository;
 use App\Repositories\EquipmentPhotoRepository;
 use App\Repositories\FluidRepository;
 use App\Repositories\PartRepository;
@@ -22,6 +23,7 @@ use App\Repositories\EquipmentRepository;
 use App\Repositories\PreventivePlanRepository;
 use App\Repositories\SiteRepository;
 use App\Repositories\WorkOrderRepository;
+use App\Services\EquipmentDocumentService;
 use App\Services\EquipmentService;
 use App\Services\MeterService;
 use App\Services\PhotoService;
@@ -45,6 +47,8 @@ final class EquipmentController extends Controller
         private readonly PartRepository $parts,
         private readonly FluidRepository $fluids,
         private readonly FluidService $fluidService,
+        private readonly EquipmentDocumentRepository $documents,
+        private readonly EquipmentDocumentService $documentService,
     ) {
         parent::__construct($ctx);
     }
@@ -95,6 +99,8 @@ final class EquipmentController extends Controller
             'readings' => $this->equipment->readings((int) $item['id']),
             'assignments' => $this->assignments->current((int) $item['id']),
             'compatibleParts' => $item['model_id'] !== null ? $this->parts->forModel((int) $item['model_id'], (int) $item['site_id']) : [],
+            'documents' => $this->documents->forEquipment((int) $item['id']),
+            'documentTypes' => $this->user()->can('documents.manage') ? $this->documents->types() : [],
             'fluidLogs' => $this->fluids->forEquipment((int) $item['id']),
             'fluidRates' => $this->fluids->ratesForEquipment((int) $item['id']),
             'fluidOptions' => $this->user()->can('equipment.reading') ? $this->parts->fluidsOnSite((int) $item['site_id'], $item['model_id'] !== null ? (int) $item['model_id'] : null) : [],
@@ -173,6 +179,45 @@ final class EquipmentController extends Controller
         }
 
         return $this->redirect("/equipment/$id", t('flash.fluid_saved'));
+    }
+
+    /** Nouveau document à échéance (assurance, contrôle technique…) ou renouvellement. */
+    public function storeDocument(Request $request, array $params): Response
+    {
+        $id = $this->id($params);
+        $this->documentService->add($id, $request->body, $request->file('document_file'));
+
+        return $this->redirect("/equipment/$id#documents", t('flash.document_saved'));
+    }
+
+    public function updateDocument(Request $request, array $params): Response
+    {
+        $id = $this->id($params);
+        $this->documentService->update($id, (int) $params['documentId'], $request->body, $request->file('document_file'), $request->string('remove_file') === '1');
+
+        return $this->redirect("/equipment/$id#documents", t('flash.document_saved'));
+    }
+
+    /** Fichier joint d'un document (scan, photo), servi après contrôle du périmètre. */
+    public function documentFile(Request $request, array $params): Response
+    {
+        $file = $this->documentService->file($this->id($params), (int) $params['documentId']) ?? throw HttpException::notFound();
+        $disposition = $request->string('download') === '1' ? 'attachment' : 'inline';
+
+        return new Response((string) file_get_contents($file['path']), 200, [
+            'Content-Type' => $file['mime'],
+            'Cache-Control' => 'private, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Disposition' => $disposition . "; filename*=UTF-8''" . rawurlencode($file['name']),
+        ]);
+    }
+
+    public function deleteDocument(Request $request, array $params): Response
+    {
+        $id = $this->id($params);
+        $this->documentService->delete($id, (int) $params['documentId']);
+
+        return $this->redirect("/equipment/$id#documents", t('flash.document_deleted'));
     }
 
     public function uploadPhoto(Request $request, array $params): Response

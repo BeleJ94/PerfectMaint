@@ -42,6 +42,38 @@
         ]
       },
 
+      // Documents de bord : une ligne par engin × type de document (libellés traduits fournis par le serveur)
+      documents: {
+        order: [[5, 'asc']],
+        columns: [
+          { data: 'code', title: t('fields.equipment_id'), html: function (r) {
+            var sub = [r.equipment_name, r.plate_number].filter(Boolean).join(' · ');
+            return '<strong>' + esc(r.code) + '</strong>' + (sub ? '<br><span class="muted">' + esc(sub) + '</span>' : '');
+          }, text: function (r) { return r.code + ' – ' + r.equipment_name; } },
+          { data: 'site', title: t('fields.site_id') },
+          { data: 'type', title: t('fields.document_type_id'), text: function (r) { return r.type_label; } },
+          { data: 'issuer', title: t('fields.issuer'), html: function (r) {
+            return esc(r.issuer || '') + (r.reference ? '<br><span class="muted mono">' + esc(r.reference) + '</span>' : '');
+          }, text: function (r) { return [r.issuer, r.reference].filter(Boolean).join(' – '); } },
+          { data: 'expires_at', title: t('fields.expires_at'), text: function (r) { return date(r.expires_at); } },
+          { data: 'state', title: t('fields.status'), html: function (r) {
+            var cls = { expired: 'breakdown', soon: 'waiting_part', valid: 'available' }[r.state] || 'neutral';
+            return '<span class="badge badge--' + cls + '">' + esc(r.state_label) + '</span>';
+          }, text: function (r) { return r.state_label; } },
+          { data: 'file_url', title: t('fields.document_file'), orderable: false, className: 'dt-right nowrap', html: function (r) {
+            var out = '';
+            if (r.file_url) {
+              out += '<a class="icon-btn" href="' + esc(r.file_url) + '" target="_blank" rel="noopener" title="' + esc(t('js.open_file')) + '"><i data-lucide="paperclip"></i></a>';
+            }
+            if (r.renew_url) {
+              out += ' <a class="btn btn--sm" href="' + esc(r.renew_url) + '"><i data-lucide="' + (r.id ? 'refresh-cw' : 'plus') + '"></i>'
+                + esc(t(r.id ? 'js.renew' : 'js.add')) + '</a>';
+            }
+            return out;
+          }, text: function (r) { return r.file_url ? '✓' : ''; } }
+        ]
+      },
+
       work_orders: {
         order: [[0, 'desc']],
         columns: [
@@ -210,6 +242,7 @@
     var days = String(t('js.days', { n: '' })).trim();
     var XL = {
       equipment: { hour_meter: { type: 'int', unit: 'h' }, open_work_orders: { type: 'int' } },
+      documents: { expires_at: { type: 'date' } },
       work_orders: { reported_at: { type: 'date' }, due_date: { type: 'date' } },
       preventive: { next_due_date: { type: 'date' }, next_due_hours: { type: 'int', unit: 'h' }, last_done_at: { type: 'date' } },
       parts: { quantity: { type: 'qty' }, min_quantity: { type: 'qty' }, unit_cost: { type: 'money' } },

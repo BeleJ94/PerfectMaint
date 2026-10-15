@@ -36,6 +36,7 @@ enum Role: string
         'personnel.view' => ['admin', 'manager', 'technician', 'viewer'],
         'personnel.manage' => ['admin', 'manager'],
         'equipment.assign' => ['admin', 'manager'],
+        'documents.manage' => ['admin', 'manager'],
         'activity.view' => ['admin', 'manager'],
         'reports.view' => ['admin', 'manager', 'viewer'],
         'sites.manage' => ['admin'],

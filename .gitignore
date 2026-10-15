@@ -7,3 +7,4 @@
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 /.claude/
+/storage/backups/

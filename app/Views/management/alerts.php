@@ -1,6 +1,7 @@
 <?php
-/** @var array $sites  @var int|null $siteId  @var array $wear  @var array $overuse  @var array $contracts  @var int $stockOut  @var int $stockLow */
+/** @var array $sites  @var int|null $siteId  @var array $wear  @var array $overuse  @var array $contracts  @var array $documents  @var int $stockOut  @var int $stockLow */
 $q = $siteId ? ['site_id' => $siteId] : [];
+$docsExpired = count(array_filter($documents, static fn (array $d) => (int) $d['days_left'] < 0));
 ?>
 <div class="page-header">
     <div class="page-title">
@@ -36,6 +37,11 @@ $q = $siteId ? ['site_id' => $siteId] : [];
         <div class="kpi__label"><?= e(t('alerts.stock')) ?></div>
         <div class="kpi__value"><?= e($stockOut + $stockLow) ?></div>
         <div class="kpi__hint"><?= e(t('alerts.stock_hint', ['out' => $stockOut, 'low' => $stockLow])) ?></div>
+    </a>
+    <a class="kpi<?= $docsExpired > 0 ? ' kpi--alert' : ($documents !== [] ? ' kpi--warn' : '') ?>" href="#documents">
+        <div class="kpi__label"><?= e(t('documents.to_renew')) ?></div>
+        <div class="kpi__value"><?= e(count($documents)) ?></div>
+        <div class="kpi__hint"><?= e(t('documents.kpi_hint', ['expired' => $docsExpired, 'soon' => count($documents) - $docsExpired])) ?></div>
     </a>
     <a class="kpi<?= $contracts !== [] ? ' kpi--warn' : '' ?>" href="#contracts">
         <div class="kpi__label"><?= e(t('site.contracts_ending')) ?></div>
@@ -103,6 +109,35 @@ $q = $siteId ? ['site_id' => $siteId] : [];
         </table></div>
     <?php endif; ?>
     <p class="hint small"><?= e(t('alerts.overuse_rule')) ?></p>
+</section>
+
+<section class="card" id="documents">
+    <div class="card__title">
+        <h2><i data-lucide="file-badge" class="title-icon<?= $docsExpired > 0 ? ' title-icon--bad' : '' ?>"></i><?= e(t('documents.to_renew')) ?></h2>
+        <span class="muted small"><?= e(t('documents.rule')) ?></span>
+    </div>
+    <?php if ($documents === []): ?>
+        <div class="empty-state empty-state--ok"><i data-lucide="shield-check"></i><p><?= e(t('documents.none_to_renew')) ?></p></div>
+    <?php else: ?>
+        <div class="table-wrap"><table class="table table--compact">
+            <thead><tr>
+                <th><?= e(t('fields.equipment_id')) ?></th><th><?= e(t('fields.document_type_id')) ?></th><th><?= e(t('fields.issuer')) ?> / <?= e(t('fields.document_reference')) ?></th>
+                <th><?= e(t('fields.expires_at')) ?></th><th><?= e(t('fields.status')) ?></th>
+            </tr></thead>
+            <tbody>
+            <?php foreach ($documents as $d): ?>
+                <?php $d['state'] = (int) $d['days_left'] < 0 ? 'expired' : 'soon'; ?>
+                <tr>
+                    <td><a href="<?= e(url('/equipment/' . $d['equipment_id']) . '#documents') ?>"><strong><?= e($d['equipment_code']) ?></strong></a><br><span class="muted small"><?= e($d['equipment_name']) ?><?= $d['plate_number'] ? ' · ' . e($d['plate_number']) : '' ?> · <?= e($d['site']) ?></span></td>
+                    <td><?= e(doc_type_label($d)) ?></td>
+                    <td><?= e($d['issuer'] ?? '—') ?><br><span class="muted small mono"><?= e($d['reference'] ?? '') ?></span></td>
+                    <td class="nowrap"><?= e(format_date($d['expires_at'])) ?></td>
+                    <td><?= document_badge($d) ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table></div>
+    <?php endif; ?>
 </section>
 
 <section class="card" id="contracts">
