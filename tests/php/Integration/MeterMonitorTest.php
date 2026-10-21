@@ -80,11 +80,32 @@ final class MeterMonitorTest extends DatabaseTestCase
         self::assertCount(31, $detail['series'], 'Relevés des 30 derniers jours');
         self::assertSame(1100, $detail['series'][30]['hour_meter']);
         self::assertSame(10.0, $detail['rate_hours']);
-        self::assertSame(1500, $detail['plans'][0]['next_due_hours']);
+        self::assertSame([1500, 'h', 'hour_meter'], [$detail['plans'][0]['next_due'], $detail['plans'][0]['unit'], $detail['metric']]);
         self::assertCount(41, $service->detail($equipment, 90)['series']);
 
         $this->expectException(HttpException::class);
         $service->detail($this->createEquipment($this->metalkol, 'MET-01'), 30);
+    }
+
+    /** Véhicule suivi au kilométrage : échéance, rythme et compteur de référence en km. */
+    public function testKilometrePlansAreProjectedOnTheOdometer(): void
+    {
+        $bus = $this->createEquipment($this->kamao, 'BUS-01', 'available');
+        $this->db->execute('UPDATE equipment SET hour_meter = NULL, odometer_km = 59200 WHERE id = :id', ['id' => $bus]);
+        for ($i = 10; $i >= 0; $i--) {
+            $this->db->execute(
+                'INSERT INTO meter_readings (equipment_id, odometer_km, recorded_at) VALUES (:e, :km, :at)',
+                ['e' => $bus, 'km' => 59200 - $i * 200, 'at' => date('Y-m-d 08:00:00', strtotime("-$i days"))]
+            );
+        }
+        $this->service($this->manager, PreventiveService::class)->create([
+            'equipment_id' => (string) $bus, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'is_active' => '1',
+        ]);
+
+        $row = $this->service($this->manager, MeterMonitorService::class)->overview()['rows'][0];
+        self::assertSame(['odometer_km', 'km', 59200, 200.0], [$row['metric'], $row['unit'], $row['current'], $row['rate']]);
+        $plan = $row['plans'][0];
+        self::assertSame([60000, 'km', 800, 92, 4, 'soon'], [$plan['next_due'], $plan['unit'], $plan['remaining'], $plan['pct'], $plan['days_left'], $plan['status']]);
     }
 
     public function testPagesAndFeeds(): void

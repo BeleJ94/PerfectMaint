@@ -38,11 +38,15 @@ foreach ($events as $i => $ev) {
             $interval = array_filter([
                 $ev['interval_days'] ? t('js.every_days', ['n' => $ev['interval_days']]) : null,
                 $ev['interval_hours'] ? t('js.every_hours', ['n' => $ev['interval_hours']]) : null,
+                $ev['interval_km'] ? t('js.every_km', ['n' => $ev['interval_km']]) : null,
             ]);
             $fields[] = [t('js.interval'), implode(' / ', $interval) ?: '—'];
             $fields[] = [t('fields.last_done_at'), format_date($ev['last_done_at']) ?: '—'];
-            if ($ev['next_due_hours'] !== null) {
-                $fields[] = [t('js.next_due_hours'), format_number($ev['next_due_hours']) . ' h' . ($ev['hour_meter'] !== null ? ' (' . t('planning.current_meter', ['h' => format_number($ev['hour_meter'])]) . ')' : '')];
+            foreach (['hours' => ['hour_meter', 'h'], 'km' => ['odometer_km', 'km']] as $suffix => [$meter, $unit]) {
+                if ($ev['next_due_' . $suffix] !== null) {
+                    $fields[] = [t('js.next_due_hours'), format_number($ev['next_due_' . $suffix]) . ' ' . $unit
+                        . ($ev[$meter] !== null ? ' (' . t('planning.current_meter', ['h' => format_number($ev[$meter]) . ' ' . $unit]) . ')' : '')];
+                }
             }
             if ($ev['kind'] === 'preventive_planned') {
                 $fields[] = [t('js.work_order'), $ev['wo_reference'] . ' · ' . t('wo_status.' . $ev['status'])];

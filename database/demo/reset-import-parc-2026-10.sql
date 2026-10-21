@@ -11,45 +11,65 @@
 --
 -- IRRÉVERSIBLE : faire une sauvegarde AVANT exécution :
 --   mysqldump --single-transaction --routines <base> > perfectmaint-avant-reset.sql
--- Exécution (encodage UTF-8 obligatoire, sinon les tirets « — » et flèches deviennent « ? ») :
+-- Compatible phpMyAdmin (onglet SQL ou Importer, fichier en UTF-8). En ligne de commande (UTF-8 obligatoire, sinon les tirets « — » et flèches deviennent « ? ») :
 --   php bin/migrate.php
 --   mysql --default-character-set=utf8mb4 <base> < database/demo/reset-import-parc-2026-10.sql
 -- Après exécution, vider aussi le dossier des photos : storage/uploads/equipment/
 -- =====================================================================================================
 
 SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS sim_reading_ids, sim_backup_readings, sim_backup_plans, sim_backup_equipment,
                      sim_days, sim_engines, sim_daily, sim_first_plan;
 
-TRUNCATE TABLE activity_log;
-TRUNCATE TABLE fluid_logs;
-TRUNCATE TABLE part_compatibility;
-TRUNCATE TABLE work_order_comments;
-TRUNCATE TABLE work_order_technicians;
-TRUNCATE TABLE work_order_parts;
-TRUNCATE TABLE stock_movements;
-TRUNCATE TABLE part_stocks;
-TRUNCATE TABLE parts;
-TRUNCATE TABLE work_orders;
-TRUNCATE TABLE work_order_sequences;
-TRUNCATE TABLE preventive_plans;
-TRUNCATE TABLE equipment_assignments;
-TRUNCATE TABLE personnel;
-TRUNCATE TABLE teams;
-TRUNCATE TABLE meter_readings;
-TRUNCATE TABLE equipment_documents;
-TRUNCATE TABLE equipment_photos;
-TRUNCATE TABLE equipment_status_history;
-TRUNCATE TABLE equipment;
-TRUNCATE TABLE user_sites;
-TRUNCATE TABLE sites;
+-- Vidage par DELETE, des tables dépendantes vers les tables de référence : fonctionne même si les
+-- contrôles de clés étrangères restent actifs (phpMyAdmin « Activer la vérification des clés étrangères »),
+-- contrairement à TRUNCATE (erreur #1701).
+DELETE FROM activity_log;
+DELETE FROM fluid_logs;
+DELETE FROM part_compatibility;
+DELETE FROM work_order_comments;
+DELETE FROM work_order_technicians;
+DELETE FROM work_order_parts;
+DELETE FROM stock_movements;
+DELETE FROM part_stocks;
+DELETE FROM parts;
+DELETE FROM equipment_assignments;
+DELETE FROM equipment_documents;
+DELETE FROM equipment_photos;
+DELETE FROM meter_readings;
+DELETE FROM equipment_status_history;
+DELETE FROM work_orders;
+DELETE FROM work_order_sequences;
+DELETE FROM preventive_plans;
+DELETE FROM equipment;
+DELETE FROM personnel;
+DELETE FROM teams;
+DELETE FROM user_sites;
+DELETE FROM sites;
 
 DELETE FROM users WHERE role <> 'admin';
 UPDATE users SET all_sites = 1, failed_logins = 0, locked_until = NULL;
 
-SET FOREIGN_KEY_CHECKS = 1;
+-- Numérotation repartant de 1 (le moteur la relève au besoin au-dessus de l'existant)
+ALTER TABLE activity_log AUTO_INCREMENT = 1;
+ALTER TABLE fluid_logs AUTO_INCREMENT = 1;
+ALTER TABLE work_order_comments AUTO_INCREMENT = 1;
+ALTER TABLE work_order_technicians AUTO_INCREMENT = 1;
+ALTER TABLE work_order_parts AUTO_INCREMENT = 1;
+ALTER TABLE stock_movements AUTO_INCREMENT = 1;
+ALTER TABLE parts AUTO_INCREMENT = 1;
+ALTER TABLE equipment_assignments AUTO_INCREMENT = 1;
+ALTER TABLE equipment_documents AUTO_INCREMENT = 1;
+ALTER TABLE equipment_photos AUTO_INCREMENT = 1;
+ALTER TABLE meter_readings AUTO_INCREMENT = 1;
+ALTER TABLE equipment_status_history AUTO_INCREMENT = 1;
+ALTER TABLE work_orders AUTO_INCREMENT = 1;
+ALTER TABLE preventive_plans AUTO_INCREMENT = 1;
+ALTER TABLE equipment AUTO_INCREMENT = 1;
+ALTER TABLE personnel AUTO_INCREMENT = 1;
+ALTER TABLE teams AUTO_INCREMENT = 1;
+ALTER TABLE sites AUTO_INCREMENT = 1;
 
 START TRANSACTION;
 

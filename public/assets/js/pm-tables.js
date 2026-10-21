@@ -113,13 +113,16 @@
             return '<span class="' + (overdue ? 'overdue' : '') + '">' + esc(date(r.next_due_date)) + '</span>';
           }, text: function (r) { return date(r.next_due_date); } },
           { data: 'next_due_hours', title: t('js.next_due_hours'), className: 'dt-right', text: function (r) {
-            if (r.next_due_hours === null) return '';
-            return num(r.next_due_hours, 0) + ' h (' + num(r.hour_meter, 0) + ')';
+            var parts = [];
+            if (r.next_due_hours !== null) parts.push(num(r.next_due_hours, 0) + ' h (' + num(r.hour_meter, 0) + ')');
+            if (r.next_due_km !== null) parts.push(num(r.next_due_km, 0) + ' km (' + num(r.odometer_km, 0) + ')');
+            return parts.join(' / ');
           } },
           { data: 'interval', title: t('js.interval'), orderable: false, text: function (r) {
             var parts = [];
             if (r.interval_days) parts.push(t('js.every_days', { n: r.interval_days }));
             if (r.interval_hours) parts.push(t('js.every_hours', { n: r.interval_hours }));
+            if (r.interval_km) parts.push(t('js.every_km', { n: r.interval_km }));
             return parts.join(' / ');
           } },
           { data: 'last_done_at', title: t('fields.last_done_at'), text: function (r) { return date(r.last_done_at); } },
@@ -244,7 +247,7 @@
       equipment: { hour_meter: { type: 'int', unit: 'h' }, open_work_orders: { type: 'int' } },
       documents: { expires_at: { type: 'date' } },
       work_orders: { reported_at: { type: 'date' }, due_date: { type: 'date' } },
-      preventive: { next_due_date: { type: 'date' }, next_due_hours: { type: 'int', unit: 'h' }, last_done_at: { type: 'date' } },
+      preventive: { next_due_date: { type: 'date' }, last_done_at: { type: 'date' } },
       parts: { quantity: { type: 'qty' }, min_quantity: { type: 'qty' }, unit_cost: { type: 'money' } },
       sites: { equipment_count: { type: 'int' } },
       procurement: { quantity: { type: 'qty' }, monthly: { type: 'qty', blankZero: true }, coverage_days: { type: 'int', unit: days },

@@ -14,8 +14,10 @@ $active = (bool) old('is_active', $item['is_active'] ?? true);
         <?= $f('instructions', 'textarea', ['class' => 'span-2', 'hint' => t('preventive.instructions_hint')]) ?>
         <?= $f('interval_days', 'number', ['attrs' => ['min' => 1, 'step' => 1], 'hint' => t('preventive.interval_hint')]) ?>
         <?= $f('interval_hours', 'number', ['attrs' => ['min' => 1, 'step' => 1]]) ?>
+        <?= $f('interval_km', 'number', ['attrs' => ['min' => 1, 'step' => 1]]) ?>
         <?= $f('last_done_at', 'date') ?>
         <?= $f('last_done_hours', 'number', ['attrs' => ['min' => 0, 'step' => 1]]) ?>
+        <?= $f('last_done_km', 'number', ['attrs' => ['min' => 0, 'step' => 1]]) ?>
         <?= $f('next_due_date', 'date', ['hint' => t('preventive.next_due_hint')]) ?>
         <div class="field">
             <input type="hidden" name="is_active" value="0">

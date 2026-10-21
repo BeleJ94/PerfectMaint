@@ -32,7 +32,7 @@ final class MeterMonitorService
     public function overview(?int $siteId = null): array
     {
         $today = new DateTimeImmutable('today');
-        $plans = self::group($this->monitor->hourPlans($siteId));
+        $plans = self::group($this->monitor->meterPlans($siteId));
         $readings = self::group($this->monitor->readingsSince(self::windowStart($today), $siteId));
 
         $rows = [];
@@ -71,7 +71,7 @@ final class MeterMonitorService
         $chartStart = $today->modify("-$days days")->format('Y-m-d');
         $e['last_reading_at'] = $readings !== [] ? $readings[count($readings) - 1]['recorded_at'] : null;
 
-        return $this->row($e, $recent, $this->monitor->hourPlans(null, $equipmentId), $today) + [
+        return $this->row($e, $recent, $this->monitor->meterPlans(null, $equipmentId), $today) + [
             'days' => $days,
             'series' => array_values(array_map(
                 static fn (array $r) => [
@@ -91,29 +91,38 @@ final class MeterMonitorService
     private function row(array $e, array $readings, array $plans, DateTimeImmutable $today): array
     {
         $hours = $e['hour_meter'] !== null ? (int) $e['hour_meter'] : null;
+        $km = $e['odometer_km'] !== null ? (int) $e['odometer_km'] : null;
         $rateHours = MeterForecast::dailyRate(self::points($readings, 'hour_meter'));
         $rateKm = MeterForecast::dailyRate(self::points($readings, 'odometer_km'));
         $daysSince = MeterForecast::daysSince($e['last_reading_at'], $today);
+        $meters = [
+            'hour_meter' => ['unit' => 'h', 'current' => $hours, 'rate' => $rateHours, 'interval' => 'interval_hours', 'due' => 'next_due_hours'],
+            'odometer_km' => ['unit' => 'km', 'current' => $km, 'rate' => $rateKm, 'interval' => 'interval_km', 'due' => 'next_due_km'],
+        ];
 
+        // Une échéance par plan et par compteur suivi (un plan « 500 h ou 10 000 km » en donne deux).
         $projected = [];
-        if ($hours !== null) {
-            foreach ($plans as $plan) {
+        foreach ($plans as $plan) {
+            foreach ($meters as $metric => $m) {
+                if ($plan[$m['due']] === null || $m['current'] === null) {
+                    continue;
+                }
+                $interval = $plan[$m['interval']] !== null ? (int) $plan[$m['interval']] : null;
                 $projected[] = [
                     'id' => (int) $plan['id'],
                     'title' => $plan['title'],
-                    'interval_hours' => $plan['interval_hours'] !== null ? (int) $plan['interval_hours'] : null,
-                    'next_due_hours' => (int) $plan['next_due_hours'],
+                    'metric' => $metric,
+                    'unit' => $m['unit'],
+                    'interval' => $interval,
+                    'next_due' => (int) $plan[$m['due']],
                     'open_work_order_id' => $plan['open_work_order_id'] !== null ? (int) $plan['open_work_order_id'] : null,
-                ] + MeterForecast::project(
-                    $hours,
-                    (int) $plan['next_due_hours'],
-                    $plan['interval_hours'] !== null ? (int) $plan['interval_hours'] : null,
-                    $rateHours,
-                    $today
-                );
+                ] + MeterForecast::project($m['current'], (int) $plan[$m['due']], $interval, $m['rate'], $today);
             }
-            usort($projected, static fn (array $a, array $b) => $a['remaining'] <=> $b['remaining']);
         }
+        usort($projected, static fn (array $a, array $b) => self::planUrgency($a) <=> self::planUrgency($b));
+
+        // Compteur de référence de l'engin : celui de l'échéance la plus proche, sinon celui qui est relevé.
+        $metric = $projected[0]['metric'] ?? ($hours === null && $km !== null ? 'odometer_km' : 'hour_meter');
 
         return [
             'id' => (int) $e['id'],
@@ -128,15 +137,28 @@ final class MeterMonitorService
             'stale' => MeterForecast::isStale($daysSince),
             'rate_hours' => $rateHours !== null ? round($rateHours, 1) : null,
             'rate_km' => $rateKm !== null ? round($rateKm, 1) : null,
+            'metric' => $metric,
+            'unit' => $meters[$metric]['unit'],
+            'current' => $meters[$metric]['current'],
+            'rate' => $meters[$metric]['rate'] !== null ? round($meters[$metric]['rate'], 1) : null,
             'status' => $projected[0]['status'] ?? 'none',
             'plans' => $projected,
         ];
     }
 
-    /** Tri : statut le plus urgent d'abord, puis le reste le plus faible. */
+    /**
+     * Tri des échéances d'un engin : statut, puis délai prévu, puis part de l'intervalle consommée
+     * (comparables entre heures et km, contrairement au reste).
+     */
+    private static function planUrgency(array $plan): array
+    {
+        return [self::STATUS_RANK[$plan['status']], $plan['days_left'] ?? PHP_INT_MAX, -($plan['pct'] ?? 0)];
+    }
+
+    /** Tri du parc : engin le plus urgent d'abord. */
     private static function urgency(array $row): array
     {
-        return [self::STATUS_RANK[$row['status']], $row['plans'][0]['remaining'] ?? PHP_INT_MAX];
+        return isset($row['plans'][0]) ? self::planUrgency($row['plans'][0]) : [self::STATUS_RANK['none'], PHP_INT_MAX, 0];
     }
 
     private static function windowStart(DateTimeImmutable $today): string

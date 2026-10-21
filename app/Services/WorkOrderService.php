@@ -219,7 +219,8 @@ final class WorkOrderService
 
             if ($target === WorkOrderStatus::Done && $wo['preventive_plan_id'] !== null) {
                 $hours = $data['hour_meter'] ?? ($equipment['hour_meter'] !== null ? (int) $equipment['hour_meter'] : null);
-                $this->completePlan((int) $wo['preventive_plan_id'], $hours);
+                $km = $data['odometer_km'] ?? ($equipment['odometer_km'] !== null ? (int) $equipment['odometer_km'] : null);
+                $this->completePlan((int) $wo['preventive_plan_id'], $hours, $km);
             }
 
             $this->logger->log(
@@ -235,7 +236,7 @@ final class WorkOrderService
     }
 
     /** Recalage de l'échéance d'un plan après exécution de son OT préventif. */
-    private function completePlan(int $planId, ?int $hours): void
+    private function completePlan(int $planId, ?int $hours, ?int $km): void
     {
         $plan = $this->plans->findForUpdate($planId);
         if ($plan === null) {
@@ -244,6 +245,7 @@ final class WorkOrderService
         $schedule = new PreventiveSchedule(
             $plan['interval_days'] !== null ? (int) $plan['interval_days'] : null,
             $plan['interval_hours'] !== null ? (int) $plan['interval_hours'] : null,
+            $plan['interval_km'] !== null ? (int) $plan['interval_km'] : null,
         );
         $today = new DateTimeImmutable('today');
         $this->plans->markDone(
@@ -252,15 +254,18 @@ final class WorkOrderService
             $hours,
             $schedule->nextDueDate($today)?->format('Y-m-d'),
             $schedule->nextDueHours($hours),
+            $km,
+            $schedule->nextDueKm($km),
         );
         $this->logger->log(
             'done',
             'preventive_plan',
             $planId,
             (int) $plan['site_id'],
-            ['last_done_at' => $plan['last_done_at'], 'next_due_date' => $plan['next_due_date'], 'next_due_hours' => $plan['next_due_hours']],
+            ['last_done_at' => $plan['last_done_at'], 'next_due_date' => $plan['next_due_date'], 'next_due_hours' => $plan['next_due_hours'],
+                'next_due_km' => $plan['next_due_km']],
             ['last_done_at' => $today->format('Y-m-d'), 'next_due_date' => $schedule->nextDueDate($today)?->format('Y-m-d'),
-                'next_due_hours' => $schedule->nextDueHours($hours)],
+                'next_due_hours' => $schedule->nextDueHours($hours), 'next_due_km' => $schedule->nextDueKm($km)],
             $plan['title']
         );
     }

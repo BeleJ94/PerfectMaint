@@ -369,7 +369,7 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
                     <?php foreach ($plans as $plan): ?>
                         <li>
                             <strong><?= e($plan['title']) ?></strong><?= $plan['is_active'] ? '' : ' <span class="badge badge--neutral">' . e(t('common.inactive')) . '</span>' ?>
-                            <time><?= e(t('preventive.next_due')) ?> : <?= e(format_date($plan['next_due_date']) ?: '—') ?><?= $plan['next_due_hours'] !== null ? ' · ' . e(format_number($plan['next_due_hours'])) . ' h' : '' ?></time>
+                            <time><?= e(t('preventive.next_due')) ?> : <?= e(format_date($plan['next_due_date']) ?: '—') ?><?= $plan['next_due_hours'] !== null ? ' · ' . e(format_number($plan['next_due_hours'])) . ' h' : '' ?><?= $plan['next_due_km'] !== null ? ' · ' . e(format_number($plan['next_due_km'])) . ' km' : '' ?></time>
                         </li>
                     <?php endforeach; ?>
                 </ul>

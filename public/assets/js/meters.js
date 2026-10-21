@@ -65,9 +65,9 @@
 
   /** Reste avant le seuil, puis date prévue au rythme actuel. */
   function dueCell(plan) {
-    if (plan.remaining < 0) return '<span class="overdue">' + esc(t('js.meters.over', { n: num(-plan.remaining, 0) })) + '</span>';
+    if (plan.remaining < 0) return '<span class="overdue">' + esc(t('js.meters.over', { n: num(-plan.remaining, 0), unit: plan.unit })) + '</span>';
     if (plan.remaining === 0) return '<span class="overdue">' + esc(t('js.meters.reached')) + '</span>';
-    var remaining = '<strong>' + esc(num(plan.remaining, 0)) + ' h</strong>';
+    var remaining = '<strong>' + esc(num(plan.remaining, 0)) + ' ' + esc(plan.unit) + '</strong>';
     if (plan.due_on === null) return remaining + '<br><span class="muted small" title="' + esc(t('js.meters.no_rate_hint')) + '">' + esc(t('js.meters.no_date')) + '</span>';
     return remaining + '<br><span class="muted small">' + esc(Core.formatDate(plan.due_on, locale)) + ' · ' + esc(t('js.meters.in_days', { n: plan.days_left })) + '</span>';
   }
@@ -78,7 +78,7 @@
     var more = row.plans.length > 1 ? ' <span class="muted small">' + esc(t('js.meters.more_plans', { n: row.plans.length - 1 })) + '</span>' : '';
     var link = plan.open_work_order_id ? Core.fillUrl(urls.work_order, { id: plan.open_work_order_id }) : (boot.can_plan ? Core.fillUrl(urls.plan, { id: plan.id }) : null);
     return (link ? '<a href="' + esc(link) + '">' + esc(plan.title) + '</a>' : esc(plan.title)) + more
-      + '<br><span class="muted small">' + esc(t('js.meters.at_hours', { n: num(plan.next_due_hours, 0) }))
+      + '<br><span class="muted small">' + esc(t('js.meters.at_hours', { n: num(plan.next_due, 0), unit: plan.unit }))
       + (plan.open_work_order_id ? ' · ' + esc(t('js.planned')) : '') + '</span>';
   }
 
@@ -122,13 +122,15 @@
         return '<button type="button" class="link-btn nowrap" data-meters-chart="' + row.id + '" title="' + esc(t('js.meters.show_evolution')) + '"><strong>' + esc(row.code) + '</strong></button>'
           + '<span class="meters-name muted small">' + esc(row.name) + ' · ' + esc(row.site) + '</span>';
       }, function (row) { return row.code; }, function (row) { return row.code + ' ' + row.name + ' ' + row.site; }),
-      // Index horaire et rythme moyen ; le kilométrage est en infobulle et dans la fenêtre de détail.
+      // Index de référence de l'engin (heures ou km selon ses échéances) et rythme moyen ; l'autre compteur est en infobulle.
       column(function (row) {
-        var km = row.odometer_km === null ? '' : num(row.odometer_km, 0) + ' km' + (row.rate_km === null ? '' : ' · ' + num(row.rate_km, 0) + ' km' + t('js.meters.per_day_short'));
-        return '<span title="' + esc(km) + '">' + (row.hour_meter === null ? '—' : esc(num(row.hour_meter, 0)) + ' h') + '</span><br>'
-          + (row.rate_hours === null ? '<span class="muted small" title="' + esc(t('js.meters.no_rate_hint')) + '">—</span>'
-            : '<span class="muted small">' + esc(num(row.rate_hours, 1)) + ' ' + esc(t('js.meters.per_day')) + '</span>');
-      }, function (row) { return row.hour_meter === null ? -1 : row.hour_meter; }, null, { className: 'dt-right nowrap' }),
+        var other = row.metric === 'hour_meter'
+          ? (row.odometer_km === null ? '' : num(row.odometer_km, 0) + ' km' + (row.rate_km === null ? '' : ' · ' + num(row.rate_km, 0) + ' km' + t('js.meters.per_day_short')))
+          : (row.hour_meter === null ? '' : num(row.hour_meter, 0) + ' h' + (row.rate_hours === null ? '' : ' · ' + num(row.rate_hours, 1) + ' h' + t('js.meters.per_day_short')));
+        return '<span title="' + esc(other) + '">' + (row.current === null ? '—' : esc(num(row.current, 0)) + ' ' + esc(row.unit)) + '</span><br>'
+          + (row.rate === null ? '<span class="muted small" title="' + esc(t('js.meters.no_rate_hint')) + '">—</span>'
+            : '<span class="muted small">' + esc(num(row.rate, row.unit === 'h' ? 1 : 0)) + ' ' + esc(row.unit + t('js.meters.per_day_short')) + '</span>');
+      }, function (row) { return row.current === null ? -1 : row.current; }, null, { className: 'dt-right nowrap' }),
       column(readingCell, function (row) { return row.days_since === null ? LAST : row.days_since; }),
       column(planCell, function (row) { return row.plans[0] ? row.plans[0].title : ''; }, function (row) { return row.plans[0] ? row.plans[0].title : ''; }),
       column(function (row) { return progressBar(row.plans[0], row.status); }, function (row) { return row.plans[0] && row.plans[0].pct !== null ? row.plans[0].pct : -1; }),
@@ -216,10 +218,16 @@
   // ---------------------------------------------------------------- Évolution d'un engin
   /** Seuils affichés : le plus proche toujours, les suivants s'ils n'écrasent pas la courbe. */
   function thresholds(detail, minValue) {
-    if (state.metric !== 'hour_meter' || !detail.plans.length) return [];
-    var nearest = detail.plans[0].next_due_hours;
+    var plans = metricPlans(detail);
+    if (!plans.length) return [];
+    var nearest = Math.min.apply(null, plans.map(function (p) { return p.next_due; }));
     var limit = nearest + Math.max(nearest - minValue, 1);
-    return detail.plans.filter(function (p) { return p.next_due_hours <= limit; });
+    return plans.filter(function (p) { return p.next_due <= limit; });
+  }
+
+  /** Échéances exprimées dans le compteur affiché (heures ou km). */
+  function metricPlans(detail) {
+    return detail.plans.filter(function (p) { return p.metric === state.metric; });
   }
 
   var thresholdPlugin = {
@@ -267,7 +275,8 @@
     var unit = metric === 'hour_meter' ? 'h' : 'km';
     var rate = metric === 'hour_meter' ? d.rate_hours : d.rate_km;
     var current = d[metric];
-    var plan = d.plans[0];
+    var plan = metricPlans(d)[0];
+    $('[data-meters-metric]').each(function () { this.setAttribute('aria-pressed', String(this.dataset.metersMetric === metric)); });
     // « i » : position du relevé dans la série, pour retrouver son détail au clic sur le point.
     var points = [];
     d.series.forEach(function (r, i) { if (r[metric] !== null) points.push({ x: ts(r.at), y: r[metric], i: i }); });
@@ -280,7 +289,7 @@
     $('[data-meters-detail-link]').attr('href', Core.fillUrl(urls.equipment, { id: d.id }));
     $('[data-meters-detail-plans]').html(d.plans.length ? d.plans.map(function (p) {
       return '<tr><td><strong>' + esc(p.title) + '</strong>' + (p.open_work_order_id ? ' <span class="muted small">· ' + esc(t('js.planned')) + '</span>' : '') + '</td>'
-        + '<td class="num nowrap">' + esc(num(p.next_due_hours, 0)) + ' h</td><td>' + progressBar(p, p.status) + '</td>'
+        + '<td class="num nowrap">' + esc(num(p.next_due, 0)) + ' ' + esc(p.unit) + '</td><td>' + progressBar(p, p.status) + '</td>'
         + '<td class="nowrap">' + dueCell(p) + '</td>'
         + '<td><span class="badge badge--' + STATUS[p.status].badge + '">' + esc(t('meter_status.' + p.status)) + '</span></td></tr>';
     }).join('') : '<tr><td colspan="5" class="muted">' + esc(t('js.meters.no_plan')) + '</td></tr>');
@@ -306,13 +315,13 @@
 
     var last = points[points.length - 1];
     var lines = thresholds(d, points[0].y).map(function (p) {
-      return { value: p.next_due_hours, color: STATUS[p.status].color, label: p.title + ' · ' + num(p.next_due_hours, 0) + ' h' };
+      return { value: p.next_due, color: STATUS[p.status].color, label: p.title + ' · ' + num(p.next_due, 0) + ' ' + p.unit };
     });
     // Projection au rythme moyen : jusqu'au premier seuil, sans dépasser la période affichée.
     var projection = [];
     if (rate > 0) {
       var horizon = Math.min(d.days, 30); // sans seuil à venir, une projection courte suffit et n'écrase pas l'historique
-      if (metric === 'hour_meter' && plan && plan.remaining > 0) horizon = Math.min(horizon, Math.max(plan.days_left, 1));
+      if (plan && plan.remaining > 0 && plan.days_left !== null) horizon = Math.min(horizon, Math.max(plan.days_left, 1));
       projection = [last, { x: last.x + horizon * DAY, y: Math.round(last.y + rate * horizon) }];
     }
     var datasets = [{
@@ -392,7 +401,9 @@
   function openDetail(id) {
     state.selected = id;
     state.days = 30;
-    state.metric = 'hour_meter';
+    // Courbe ouverte sur le compteur de référence de l'engin : km pour les véhicules suivis au kilométrage.
+    var row = state.rows.filter(function (r) { return r.id === id; })[0];
+    state.metric = row ? row.metric : 'hour_meter';
     state.detail = null;
     Swal.fire({
       html: document.getElementById('meters-detail-tpl').innerHTML,

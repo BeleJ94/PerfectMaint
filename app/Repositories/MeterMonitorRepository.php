@@ -28,8 +28,8 @@ final class MeterMonitorRepository extends Repository
         );
     }
 
-    /** Plans actifs à périodicité horaire, avec l'OT préventif éventuellement déjà ouvert. */
-    public function hourPlans(?int $siteId = null, ?int $equipmentId = null): array
+    /** Plans actifs à périodicité au compteur (heures et/ou km), avec l'OT préventif éventuellement déjà ouvert. */
+    public function meterPlans(?int $siteId = null, ?int $equipmentId = null): array
     {
         [$scopeSql, $params] = $this->scope->clause('p.site_id');
         $extraSql = '';
@@ -43,13 +43,13 @@ final class MeterMonitorRepository extends Repository
         }
 
         return $this->db->fetchAll(
-            "SELECT p.id, p.equipment_id, p.title, p.interval_hours, p.last_done_hours, p.next_due_hours,
+            "SELECT p.id, p.equipment_id, p.title, p.interval_hours, p.next_due_hours, p.interval_km, p.next_due_km,
                     (SELECT w.id FROM work_orders w WHERE w.preventive_plan_id = p.id
                         AND w.status IN ('open', 'in_progress', 'waiting_part') LIMIT 1) AS open_work_order_id
                FROM preventive_plans p
                JOIN equipment e ON e.id = p.equipment_id AND e.is_archived = 0
-              WHERE $scopeSql AND p.is_active = 1 AND p.next_due_hours IS NOT NULL $extraSql
-              ORDER BY p.next_due_hours",
+              WHERE $scopeSql AND p.is_active = 1 AND (p.next_due_hours IS NOT NULL OR p.next_due_km IS NOT NULL) $extraSql
+              ORDER BY p.id",
             $params
         );
     }

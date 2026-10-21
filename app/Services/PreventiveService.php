@@ -33,8 +33,10 @@ final class PreventiveService
             'instructions' => 'string|max:5000',
             'interval_days' => 'int|min:1|max:3650',
             'interval_hours' => 'int|min:1|max:100000',
+            'interval_km' => 'int|min:1|max:1000000',
             'last_done_at' => 'date',
             'last_done_hours' => 'int|min:0|max:999999',
+            'last_done_km' => 'int|min:0|max:9999999',
             'next_due_date' => 'date',
             'is_active' => 'bool',
         ];
@@ -66,13 +68,13 @@ final class PreventiveService
     private function prepare(array $input): array
     {
         $data = Validator::validate($input, self::rules());
-        if ($data['interval_days'] === null && $data['interval_hours'] === null) {
+        if ($data['interval_days'] === null && $data['interval_hours'] === null && $data['interval_km'] === null) {
             throw Validator::fail('interval_days', 'interval');
         }
         $equipment = $this->equipment->find($data['equipment_id']) ?? throw Validator::fail('equipment_id', 'exists');
         $data['site_id'] = (int) $equipment['site_id'];
 
-        $schedule = new PreventiveSchedule($data['interval_days'], $data['interval_hours']);
+        $schedule = new PreventiveSchedule($data['interval_days'], $data['interval_hours'], $data['interval_km']);
         $reference = new DateTimeImmutable($data['last_done_at'] ?? 'today');
         $data['next_due_date'] ??= $schedule->nextDueDate($reference)?->format('Y-m-d');
         if ($data['interval_days'] === null) {
@@ -80,6 +82,9 @@ final class PreventiveService
         }
         $data['next_due_hours'] = $schedule->nextDueHours(
             $data['last_done_hours'] ?? ($equipment['hour_meter'] !== null ? (int) $equipment['hour_meter'] : 0)
+        );
+        $data['next_due_km'] = $schedule->nextDueKm(
+            $data['last_done_km'] ?? ($equipment['odometer_km'] !== null ? (int) $equipment['odometer_km'] : 0)
         );
 
         return $data;

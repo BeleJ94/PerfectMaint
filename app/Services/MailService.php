@@ -180,8 +180,8 @@ final class MailService
             foreach (array_slice($urgent, 0, self::DIGEST_ROWS) as $row) {
                 $plan = $row['plans'][0];
                 $remaining = $plan['remaining'] <= 0
-                    ? t('mail.over', ['n' => format_number(-$plan['remaining'])])
-                    : format_number($plan['remaining']) . ' h' . ($plan['due_on'] !== null ? ' · ' . format_date($plan['due_on']) : '');
+                    ? t('mail.over', ['n' => format_number(-$plan['remaining']), 'unit' => $plan['unit']])
+                    : format_number($plan['remaining']) . ' ' . $plan['unit'] . ($plan['due_on'] !== null ? ' · ' . format_date($plan['due_on']) : '');
                 $status = t('meter_status.' . $row['status']);
                 $html .= "<tr><td $cell><strong>" . self::h($row['code']) . "</strong></td><td $cell>" . self::h($row['site']) . "</td><td $cell>" . self::h($plan['title'])
                     . "</td><td $cell>" . self::h($remaining) . "</td><td $cell><span style=\"color:" . ($row['status'] === 'due' ? '#B42318' : '#B54708') . '">'

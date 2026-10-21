@@ -22,8 +22,9 @@ final class ManagementRepository extends Repository
                 'subtitle' => $r['code'], 'site' => $r['site'], 'id' => (int) ($r['open_wo'] ?: $r['id']), 'equipment_id' => (int) $r['equipment_id'],
                 'overdue' => $r['d'] < $today, 'priority' => null, 'code' => $r['code'], 'equipment_name' => $r['equipment_name'],
                 'plan_id' => (int) $r['id'], 'wo_reference' => $r['wo_reference'], 'status' => $r['wo_status'],
-                'interval_days' => $r['interval_days'], 'interval_hours' => $r['interval_hours'], 'last_done_at' => $r['last_done_at'],
-                'next_due_hours' => $r['next_due_hours'], 'hour_meter' => $r['hour_meter']];
+                'interval_days' => $r['interval_days'], 'interval_hours' => $r['interval_hours'], 'interval_km' => $r['interval_km'], 'last_done_at' => $r['last_done_at'],
+                'next_due_hours' => $r['next_due_hours'], 'hour_meter' => $r['hour_meter'],
+                'next_due_km' => $r['next_due_km'], 'odometer_km' => $r['odometer_km']];
         }
         foreach ($this->workOrdersDue($from, $to, $siteId) as $r) {
             $events[] = ['date' => $r['d'], 'kind' => 'work_order', 'title' => $r['title'], 'subtitle' => $r['reference'] . ' · ' . $r['code'],
@@ -72,7 +73,7 @@ final class ManagementRepository extends Repository
 
         return $this->db->fetchAll(
             "SELECT p.id, p.title, p.next_due_date AS d, p.equipment_id, e.code, e.name AS equipment_name, e.hour_meter, s.name AS site,
-                    p.interval_days, p.interval_hours, p.last_done_at, p.next_due_hours,
+                    p.interval_days, p.interval_hours, p.interval_km, p.last_done_at, p.next_due_hours, p.next_due_km, e.odometer_km,
                     (SELECT w.id FROM work_orders w WHERE w.preventive_plan_id = p.id AND w.status IN ('open', 'in_progress', 'waiting_part') LIMIT 1) AS open_wo,
                     (SELECT w.reference FROM work_orders w WHERE w.preventive_plan_id = p.id AND w.status IN ('open', 'in_progress', 'waiting_part') LIMIT 1) AS wo_reference,
                     (SELECT w.status FROM work_orders w WHERE w.preventive_plan_id = p.id AND w.status IN ('open', 'in_progress', 'waiting_part') LIMIT 1) AS wo_status

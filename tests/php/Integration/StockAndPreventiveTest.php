@@ -108,6 +108,16 @@ final class StockAndPreventiveTest extends DatabaseTestCase
         self::assertCount(1, $preventive->generateDue(), '500 h ≥ 250 + 200 h');
     }
 
+    public function testPreventiveTriggeredByOdometer(): void
+    {
+        $equipment = $this->createEquipment($this->site, 'BUS-02');
+        $this->db->execute('UPDATE equipment SET odometer_km = 61000 WHERE id = :id', ['id' => $equipment]);
+        $preventive = $this->service($this->manager, PreventiveService::class);
+        $id = $preventive->create(['equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'is_active' => '1']);
+        self::assertSame(60000, (int) $this->db->fetchValue('SELECT next_due_km FROM preventive_plans WHERE id = :id', ['id' => $id]));
+        self::assertCount(1, $preventive->generateDue(), '61 000 km ≥ 50 000 + 10 000 km');
+    }
+
     public function testPreventiveRequiresAnInterval(): void
     {
         $equipment = $this->createEquipment($this->site, 'CH-03');

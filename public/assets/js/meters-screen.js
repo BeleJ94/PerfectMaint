@@ -33,6 +33,8 @@
 
   function num(value, decimals) { return Core.formatNumber(value, locale, decimals); }
   function pad(n) { return n < 10 ? '0' + n : String(n); }
+  /** Rythme moyen dans le compteur de référence de l'engin : « 12,5 h/j » ou « 180 km/j ». */
+  function rateText(d) { return num(d.rate, d.unit === 'h' ? 1 : 0) + ' ' + d.unit + t('js.meters.per_day_short'); }
   function clock(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
   function ts(value) {
     var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value));
@@ -73,7 +75,7 @@
   /** Engins parcourus par la rotation : ceux de la liste, sinon tous les engins suivis (pour la courbe). */
   function pool(rows) {
     var list = listRows(rows);
-    return list.length || state.filter || state.search ? list : rows.filter(function (r) { return r.hour_meter !== null; });
+    return list.length || state.filter || state.search ? list : rows.filter(function (r) { return r.current !== null; });
   }
 
   // ---------------------------------------------------------------- Rendu
@@ -85,15 +87,15 @@
       + '<span class="wall__engine"><strong>' + esc(row.code) + '</strong><small>' + esc(row.name) + ' · ' + esc(row.site) + '</small></span>';
     if (!plan) {
       return open + '<span class="wall__plan"><strong>' + esc(t('js.meters.no_plan')) + '</strong><small>'
-        + (row.hour_meter === null ? '—' : esc(num(row.hour_meter, 0)) + ' h') + '</small></span><span></span><span></span></div>';
+        + (row.current === null ? '—' : esc(num(row.current, 0)) + ' ' + esc(row.unit)) + '</small></span><span></span><span></span></div>';
     }
-    var remaining = plan.remaining < 0 ? t('js.meters.over', { n: num(-plan.remaining, 0) })
-      : (plan.remaining === 0 ? t('js.meters.reached') : num(plan.remaining, 0) + ' h');
-    var when = plan.remaining <= 0 ? t('js.meters.at_hours', { n: num(plan.next_due_hours, 0) })
+    var remaining = plan.remaining < 0 ? t('js.meters.over', { n: num(-plan.remaining, 0), unit: plan.unit })
+      : (plan.remaining === 0 ? t('js.meters.reached') : num(plan.remaining, 0) + ' ' + plan.unit);
+    var when = plan.remaining <= 0 ? t('js.meters.at_hours', { n: num(plan.next_due, 0), unit: plan.unit })
       : (plan.due_on === null ? t('js.meters.no_date') : Core.formatDate(plan.due_on, locale) + ' · ' + t('js.meters.in_days', { n: plan.days_left }));
     return open
-      + '<span class="wall__plan"><strong>' + esc(plan.title) + '</strong><small>' + esc(num(row.hour_meter, 0)) + ' h'
-      + (row.rate_hours === null ? '' : ' · ' + esc(num(row.rate_hours, 1)) + ' ' + esc(t('js.meters.per_day'))) + '</small></span>'
+      + '<span class="wall__plan"><strong>' + esc(plan.title) + '</strong><small>' + esc(num(row.current, 0)) + ' ' + esc(row.unit)
+      + (row.rate === null ? '' : ' · ' + esc(rateText(row))) + '</small></span>'
       + '<span class="wall__progress"><span class="wall__bar"><span style="width:' + Math.min(100, plan.pct === null ? 0 : plan.pct) + '%"></span></span>'
       + '<b>' + (plan.pct === null ? '—' : plan.pct + ' %') + '</b></span>'
       + '<span class="wall__due"><strong>' + esc(remaining) + '</strong><small>' + esc(when) + '</small></span></div>';
@@ -171,15 +173,15 @@
     var points = d ? seriesPoints(d) : [];
     $('[data-wall-chart-title]').text(d ? t('js.meters.evolution_of', { code: d.code }) : '');
     $('[data-wall-equipment]').prop('hidden', !d).attr('href', d ? Core.fillUrl(urls.equipment, { id: d.id }) : '#');
-    $('[data-wall-chart-rate]').text(d && d.rate_hours !== null ? num(d.rate_hours, 1) + ' ' + t('js.meters.per_day') : '');
+    $('[data-wall-chart-rate]').text(d && d.rate !== null ? rateText(d) : '');
     $('[data-wall-chart-empty]').prop('hidden', !d || points.length > 0);
     state.chart = buildChart(document.getElementById('wall-chart'), d, points);
   }
 
-  /** Points de la courbe horaire ; « i » est la position du relevé dans la série (détail au clic sur le point). */
+  /** Points de la courbe du compteur de référence (heures ou km) ; « i » est la position du relevé dans la série (détail au clic sur le point). */
   function seriesPoints(d) {
     var points = [];
-    d.series.forEach(function (r, i) { if (r.hour_meter !== null) points.push({ x: ts(r.at), y: r.hour_meter, i: i }); });
+    d.series.forEach(function (r, i) { if (r[d.metric] !== null) points.push({ x: ts(r.at), y: r[d.metric], i: i }); });
     return points;
   }
 
@@ -202,11 +204,11 @@
       borderWidth: points.length > 120 ? 2 : 3, pointRadius: radius, pointHoverRadius: radius + 3, tension: 0
     }];
     var end = last.x;
-    if (d.rate_hours > 0) {
+    if (d.rate > 0) {
       var horizon = plan && plan.remaining > 0 ? Math.min(30, Math.max(plan.days_left, 1)) : 14;
       end = last.x + horizon * DAY;
       datasets.push({
-        label: t('js.meters.projection'), data: [last, { x: end, y: Math.round(last.y + d.rate_hours * horizon) }],
+        label: t('js.meters.projection'), data: [last, { x: end, y: Math.round(last.y + d.rate * horizon) }],
         borderColor: LINE, backgroundColor: 'transparent', borderWidth: 3, borderDash: [8, 6], pointRadius: [0, 6], pointBorderWidth: 3, tension: 0
       });
     }
@@ -215,7 +217,7 @@
     var xMax = Math.max(end, Date.now());
     if (plan) {
       datasets.push({
-        label: t('js.wall.threshold', { n: num(plan.next_due_hours, 0) }), data: [{ x: xMin, y: plan.next_due_hours }, { x: xMax, y: plan.next_due_hours }],
+        label: t('js.wall.threshold', { n: num(plan.next_due, 0), unit: plan.unit }), data: [{ x: xMin, y: plan.next_due }, { x: xMax, y: plan.next_due }],
         borderColor: STATUS_COLOR[plan.status], backgroundColor: 'transparent', borderWidth: 2, borderDash: [4, 4], pointRadius: 0
       });
     }
@@ -242,7 +244,7 @@
           },
           y: {
             grid: { color: GRID }, border: { display: false },
-            ticks: { color: TEXT, font: { size: size }, precision: 0, maxTicksLimit: 6, callback: function (value) { return num(value, 0) + ' h'; } }
+            ticks: { color: TEXT, font: { size: size }, precision: 0, maxTicksLimit: 6, callback: function (value) { return num(value, 0) + ' ' + d.unit; } }
           }
         },
         plugins: {
@@ -251,7 +253,7 @@
             titleFont: { size: size }, bodyFont: { size: size },
             callbacks: {
               title: function (items) { var day = new Date(items[0].parsed.x); return pad(day.getDate()) + '/' + pad(day.getMonth() + 1) + '/' + day.getFullYear(); },
-              label: function (item) { return item.dataset.label + ' : ' + num(item.parsed.y, 0) + ' h'; }
+              label: function (item) { return item.dataset.label + ' : ' + num(item.parsed.y, 0) + ' ' + d.unit; }
             }
           }
         }
@@ -396,10 +398,10 @@
   function modalHtml(d) {
     var age = d.days_since === null ? t('js.meters.never') : (d.days_since === 0 ? t('js.meters.today') : t('js.meters.days_ago', { n: d.days_since }));
     var plans = d.plans.map(function (p) {
-      var remaining = p.remaining < 0 ? t('js.meters.over', { n: num(-p.remaining, 0) }) : (p.remaining === 0 ? t('js.meters.reached') : num(p.remaining, 0) + ' h');
+      var remaining = p.remaining < 0 ? t('js.meters.over', { n: num(-p.remaining, 0), unit: p.unit }) : (p.remaining === 0 ? t('js.meters.reached') : num(p.remaining, 0) + ' ' + p.unit);
       var when = p.due_on === null ? '—' : Core.formatDate(p.due_on, locale) + ' · ' + t('js.meters.in_days', { n: p.days_left });
       return '<tr class="wall__row--' + p.status + '"><td><strong>' + esc(p.title) + '</strong>' + (p.open_work_order_id ? '<small>' + esc(t('js.planned')) + '</small>' : '') + '</td>'
-        + '<td class="num">' + esc(num(p.next_due_hours, 0)) + ' h</td>'
+        + '<td class="num">' + esc(num(p.next_due, 0)) + ' ' + esc(p.unit) + '</td>'
         + '<td><span class="wall__progress"><span class="wall__bar"><span style="width:' + Math.min(100, p.pct === null ? 0 : p.pct) + '%"></span></span><b>' + (p.pct === null ? '—' : p.pct + ' %') + '</b></span></td>'
         + '<td class="num"><strong>' + esc(remaining) + '</strong></td><td>' + esc(p.remaining <= 0 ? '—' : when) + '</td>'
         + '<td><span class="wall__badge">' + esc(t('meter_status.' + p.status)) + '</span></td></tr>';
@@ -416,7 +418,7 @@
       + '<div class="wall__vitals">'
       + vital('timer', t('fields.hour_meter'), d.hour_meter === null ? '—' : esc(num(d.hour_meter, 0)) + ' h')
       + vital('route', t('fields.odometer_km'), d.odometer_km === null ? '—' : esc(num(d.odometer_km, 0)) + ' km', d.rate_km === null ? '' : num(d.rate_km, 0) + ' km' + t('js.meters.per_day_short'))
-      + vital('activity', t('js.meters.rate'), d.rate_hours === null ? '—' : esc(num(d.rate_hours, 1)) + ' ' + esc(t('js.meters.per_day')), d.rate_hours === null ? t('js.wall.no_rate') : '')
+      + vital('activity', t('js.meters.rate'), d.rate === null ? '—' : esc(rateText(d)), d.rate === null ? t('js.wall.no_rate') : '')
       + vital('gauge', t('js.wall.last_reading'), d.last_reading_at === null ? '—' : esc(Core.formatDate(d.last_reading_at, locale, true)), age)
       + '</div>'
       + '<div class="wall__modal-body"><section class="wall__modal-plans"><h3>' + esc(t('js.wall.plans')) + '</h3>'
@@ -428,7 +430,7 @@
       + '</section><section class="wall__modal-chart"><div class="wall__title"><h3>' + esc(t('js.wall.trend')) + '</h3><span class="wall__pager">'
       + [30, 90, 365, 548].map(function (n) { return '<button type="button" class="wall__nav wall__nav--text" data-wall-modal-days="' + n + '" aria-pressed="' + (n === modal.days) + '">' + esc(n === 548 ? t('js.wall.months18') : t('js.days', { n: n })) + '</button>'; }).join('')
       + '</span></div><div class="wall__chart"><canvas id="wall-modal-chart"></canvas>'
-      + (d.series.some(function (r) { return r.hour_meter !== null; }) ? '' : '<p class="wall__chart-empty">' + esc(t('js.wall.no_reading')) + '</p>')
+      + (d.series.some(function (r) { return r[d.metric] !== null; }) ? '' : '<p class="wall__chart-empty">' + esc(t('js.wall.no_reading')) + '</p>')
       + '</div></section></div>';
   }
 
