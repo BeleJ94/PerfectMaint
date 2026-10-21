@@ -168,6 +168,12 @@ final class PreventivePlanRepository extends Repository
         );
     }
 
+    public function delete(int $id): void
+    {
+        [$scopeSql, $params] = $this->scope->clause('site_id');
+        $this->db->execute("DELETE FROM preventive_plans WHERE id = :id AND $scopeSql", ['id' => $id] + $params);
+    }
+
     public function markDone(
         int $id,
         string $doneAt,

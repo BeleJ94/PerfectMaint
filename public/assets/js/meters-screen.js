@@ -62,12 +62,19 @@
     soon: function (r) { return r.status === 'soon'; },
     check: function (r) { return r.status === 'check'; },
     ok: function (r) { return r.status === 'ok'; },
-    read: function (r) { return r.days_since !== 0; },
+    read: function (r) { return r.days_since === 0; },
+    unread: function (r) { return r.days_since !== 0; },
     stale: function (r) { return r.stale; }
   };
+  /** Relevés du jour : le plus récent en tête. */
+  function byLastReading(a, b) {
+    var at = function (r) { return r.last_reading ? r.last_reading.at : (r.last_reading_at || ''); };
+    return at(b) < at(a) ? -1 : (at(b) > at(a) ? 1 : 0);
+  }
   /** Lignes de la liste : les échéances à traiter, ou le filtre choisi au clic. */
   function listRows(rows) {
     if (state.filter) rows = rows.filter(FILTERS[state.filter]);
+    if (state.filter === 'read') rows = rows.slice().sort(byLastReading);
     // Une recherche porte sur tous les engins (ou sur ceux de l'indicateur choisi), pas seulement sur les échéances à traiter.
     if (state.search) {
       return rows.filter(function (r) { return (r.code + ' ' + r.name + ' ' + r.site).toLowerCase().indexOf(state.search) !== -1; });
@@ -81,15 +88,37 @@
   }
 
   // ---------------------------------------------------------------- Rendu
+  /**
+   * Détail d'un relevé du jour : index saisi, heure et auteur, écart avec le relevé précédent,
+   * puis la prochaine échéance (reste) pour situer l'engin.
+   */
+  function readingCells(row) {
+    var r = row.last_reading;
+    var at = r ? r.at : row.last_reading_at;
+    var who = [at ? t('js.wall.read_at', { time: clock(ts(at)) }) : null, r && r.by ? r.by : null].filter(Boolean).join(' · ');
+    var delta = !r || r.delta === null
+      ? '<strong>—</strong><small>' + esc(t('js.wall.first_reading')) + '</small>'
+      : '<strong' + (r.delta === 0 ? ' class="wall__issue"' : '') + '>+' + esc(num(r.delta, 0)) + ' ' + esc(row.unit) + '</strong><small>'
+        + esc(t('js.wall.since', { date: Core.formatDate(r.previous_at, locale) })) + (r.delta === 0 ? ' · ' + esc(t('js.wall.no_change')) : '') + '</small>';
+    var plan = row.plans[0];
+    var due = plan && plan.remaining !== null
+      ? '<strong>' + esc(M.remaining(plan)) + '</strong><small>' + esc(plan.title) + '</small>'
+      : '<strong>—</strong><small>' + esc(plan ? (M.issue(plan, row) || plan.title) : t('js.meters.no_plan')) + '</small>';
+    return '<span class="wall__plan"><strong>' + (r ? esc(num(r.value, 0)) + ' ' + esc(row.unit) : '—') + '</strong><small>' + esc(who) + '</small></span>'
+      + '<span class="wall__progress">' + delta + '</span>'
+      + '<span class="wall__due">' + due + '</span>';
+  }
+
   function rowHtml(row, active, index) {
     var plan = row.plans[0];
     var open = '<div class="wall__row wall__row--' + row.status + (active ? ' is-active' : '') + (state.flash[row.id] > Date.now() ? ' is-new' : '')
       + '" data-wall-row="' + index + '" role="button" tabindex="0">'
       + '<span class="wall__badge">' + esc(t('meter_status.' + row.status)) + '</span>'
       + '<span class="wall__engine"><strong>' + esc(row.code) + '</strong><small>' + esc(row.name) + ' · ' + esc(row.site) + '</small></span>';
+    if (state.filter === 'read') return open + readingCells(row) + '</div>';
     if (!plan) {
-      return open + '<span class="wall__plan"><strong>' + esc(t('js.meters.no_plan')) + '</strong><small>'
-        + (row.current === null ? '—' : esc(num(row.current, 0)) + ' ' + esc(row.unit)) + '</small></span><span></span><span></span></div>';
+      return open + '<span class="wall__plan wall__plan--wide"><strong>' + esc(t('js.meters.no_plan')) + '</strong><small>'
+        + (row.current === null ? '—' : esc(num(row.current, 0)) + ' ' + esc(row.unit)) + (row.rate === null ? '' : ' · ' + esc(rateText(row))) + '</small></span></div>';
     }
     // Avancement entre ses deux bornes (dernière réalisation → échéance) ; la raison d'un « à vérifier » remplace la date prévue.
     var issue = M.issue(plan, row);

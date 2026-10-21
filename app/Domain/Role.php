@@ -30,6 +30,7 @@ enum Role: string
         'workorder.manage' => ['admin', 'manager'],
         'preventive.view' => ['admin', 'manager', 'technician', 'viewer'],
         'preventive.manage' => ['admin', 'manager'],
+        'preventive.delete' => ['admin'],
         'parts.view' => ['admin', 'manager', 'technician', 'viewer'],
         'parts.manage' => ['admin', 'manager'],
         'field.use' => ['admin', 'manager', 'technician'],

@@ -128,6 +128,61 @@ final class StockAndPreventiveTest extends DatabaseTestCase
         ]);
     }
 
+    public function testLastServiceCannotExceedTheCurrentReading(): void
+    {
+        $equipment = $this->createEquipment($this->site, 'CH-05', 'available', 1000);
+        try {
+            $this->service($this->manager, PreventiveService::class)->create([
+                'equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => '500',
+                'last_done_hours' => '1200', 'last_done_at' => date('Y-m-d'), 'is_active' => '1',
+            ]);
+            self::fail('Point de départ au-delà de l\'index actuel accepté');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('last_done_hours', $e->errors);
+        }
+    }
+
+    public function testOnlyAdminDeletesAPlanAndWorkOrdersAreKept(): void
+    {
+        $equipment = $this->createEquipment($this->site, 'CH-07', 'available', 500);
+        $planId = $this->service($this->manager, PreventiveService::class)->create([
+            'equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => '200',
+            'last_done_hours' => '250', 'last_done_at' => date('Y-m-d'), 'is_active' => '1',
+        ]);
+        [$woId] = $this->service($this->manager, PreventiveService::class)->generateDue();
+        $csrf = ['_csrf' => str_repeat('a', 64)];
+        $manager = \App\Core\Session::memory(['auth_user_id' => $this->manager, '_csrf_token' => str_repeat('a', 64)]);
+        $admin = \App\Core\Session::memory(['auth_user_id' => $this->createUser('admin', [$this->site], true), '_csrf_token' => str_repeat('a', 64)]);
+
+        self::assertSame(403, $this->http($manager, 'POST', "/preventive/$planId/delete", $csrf)->status, 'Responsable : pas de suppression');
+        self::assertStringNotContainsString('id="preventive-delete"', $this->http($manager, 'GET', "/preventive/$planId/edit")->body);
+        self::assertStringContainsString('id="preventive-delete"', $this->http($admin, 'GET', "/preventive/$planId/edit")->body);
+
+        self::assertSame(302, $this->http($admin, 'POST', "/preventive/$planId/delete", $csrf)->status);
+        self::assertSame(0, (int) $this->db->fetchValue('SELECT COUNT(*) FROM preventive_plans WHERE id = :id', ['id' => $planId]));
+        self::assertNull($this->db->fetchValue('SELECT preventive_plan_id FROM work_orders WHERE id = :id', ['id' => $woId]), 'OT conservé, sans lien');
+        self::assertSame(1, (int) $this->db->fetchValue("SELECT COUNT(*) FROM activity_log WHERE action = 'delete' AND entity_type = 'preventive_plan' AND entity_id = :id", ['id' => $planId]));
+    }
+
+    public function testPlanFormShowsTrackingMeterAndUnconfirmedStart(): void
+    {
+        $equipment = $this->createEquipment($this->site, 'CH-06', 'available', 800);
+        $session = \App\Core\Session::memory(['auth_user_id' => $this->manager, '_csrf_token' => str_repeat('a', 64)]);
+
+        $create = $this->http($session, 'GET', "/preventive/create?equipment_id=$equipment");
+        self::assertSame(200, $create->status);
+        self::assertStringContainsString('data-preventive-preview', $create->body);
+        self::assertMatchesRegularExpression('/value="800"[^>]*name="last_done_hours"|name="last_done_hours"[^>]*value="800"/', $create->body, 'Point de départ proposé : index actuel');
+
+        // Plan ancien sans point de départ : avis de confirmation à l'édition.
+        $this->db->execute(
+            "INSERT INTO preventive_plans (site_id, equipment_id, title, interval_hours, next_due_hours, is_active) VALUES (:s, :e, 'Vidange', 250, 1000, 1)",
+            ['s' => $this->site, 'e' => $equipment]
+        );
+        $planId = (int) $this->db->fetchValue('SELECT MAX(id) FROM preventive_plans');
+        self::assertStringContainsString(e(t('preventive.unconfirmed_notice')), $this->http($session, 'GET', "/preventive/$planId/edit")->body);
+    }
+
     public function testPreventiveRequiresAnInterval(): void
     {
         $equipment = $this->createEquipment($this->site, 'CH-03');

@@ -131,6 +131,7 @@ p { margin: 0 0 var(--space-3); }
 .alert--success { background: #E7F3EC; border-color: #B7DCC6; color: #14532D; }
 .alert--error { background: #FBEAE8; border-color: #F1C1BB; color: #7A1A12; }
 .alert--info { background: var(--accent-soft); border-color: #C3D3E3; color: var(--accent); }
+.alert--warning { background: #FCEFE3; border-color: #F4CFA9; color: #7A3306; }
 
 /* Formulaires */
 .form { max-width: 880px; }
@@ -1310,7 +1311,7 @@ button.wall__kpi { display: block; width: 100%; }
 .wall__title { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; margin-bottom: .5em; color: var(--w-muted); }
 .wall__title h2 { font-size: 1.1em; font-weight: 600; color: #F2F5F8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wall__rows { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); }
-.wall__row { display: grid; grid-template-columns: 8.6em minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.1fr); align-items: center; gap: 1em; padding: 0 .7em; border-top: 1px solid var(--w-line); border-left: .3em solid transparent; }
+.wall__row { display: grid; grid-template-columns: 11em minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.1fr); align-items: center; gap: 1em; padding: 0 .7em; border-top: 1px solid var(--w-line); border-left: .3em solid transparent; }
 .wall__row:first-child { border-top: 0; }
 .wall__row.is-active { background: #19273A; border-left-color: #6CB0F2; }
 .wall__row.is-new { animation: wall-flash 1s ease-in-out infinite alternate; }
@@ -1355,3 +1356,21 @@ button.wall__kpi { display: block; width: 100%; }
 .meter-bounds .is-unconfirmed { color: var(--st-waiting-part); font-style: italic; }
 .meter-issue { display: flex; align-items: flex-start; gap: 4px; margin-top: 2px; font-size: .75rem; font-weight: 500; color: var(--st-waiting-part); }
 .meter-issue [data-lucide] { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
+
+/* Plan préventif : compteur de suivi de l'engin et aperçu de l'échéance */
+.plan-meter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); font-size: .875rem; font-variant-numeric: tabular-nums; }
+.plan-meter[hidden], [data-meter][hidden] { display: none; }
+.plan-preview { display: grid; gap: var(--space-3); }
+.plan-preview__row { display: grid; gap: 4px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-alt); font-variant-numeric: tabular-nums; }
+.plan-preview__row .life { max-width: 360px; }
+.form-section > .hint { margin: 0 0 var(--space-3); }
+.form-section > [data-preventive-other] { margin-top: var(--space-3); display: inline-flex; align-items: center; gap: 4px; }
+.form-section > [data-preventive-other][hidden] { display: none; }
+.form-actions__start { margin-right: auto; }
+
+/* Écran mural : badge contenu dans sa colonne, ligne sans plan sur toute la largeur, titre « Non relevés » cliquable */
+.wall__badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.wall__plan--wide { grid-column: span 3; }
+.wall__link--title { font-weight: inherit; font-size: inherit; text-decoration: none; border-bottom: 1px dashed currentColor; }
+.wall__link--title.is-selected { color: #6CB0F2; }
+.wall__progress > strong { font-size: 1.2em; }

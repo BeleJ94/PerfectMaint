@@ -138,6 +138,33 @@ final class MeterMonitorService
             'rate' => $meters[$metric]['rate'] !== null ? round($meters[$metric]['rate'], 1) : null,
             'status' => $projected[0]['status'] ?? 'none',
             'plans' => $projected,
+            'last_reading' => self::lastReading($readings, $metric),
+        ];
+    }
+
+    /**
+     * Dernier relevé de la fenêtre dans le compteur de suivi : heure, valeur, auteur et écart avec le relevé précédent.
+     * Sert au détail « Relevés du jour ».
+     *
+     * @param list<array<string, mixed>> $readings relevés triés par date croissante
+     * @return array{at: string, value: int, by: string|null, delta: int|null, previous_at: string|null}|null
+     */
+    private static function lastReading(array $readings, string $metric): ?array
+    {
+        $points = array_values(array_filter($readings, static fn (array $r) => $r[$metric] !== null));
+        $count = count($points);
+        if ($count === 0) {
+            return null;
+        }
+        $last = $points[$count - 1];
+        $previous = $points[$count - 2] ?? null;
+
+        return [
+            'at' => $last['recorded_at'],
+            'value' => (int) $last[$metric],
+            'by' => $last['recorded_by_name'] ?? null,
+            'delta' => $previous !== null ? (int) $last[$metric] - (int) $previous[$metric] : null,
+            'previous_at' => $previous['recorded_at'] ?? null,
         ];
     }
 

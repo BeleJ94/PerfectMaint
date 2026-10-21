@@ -64,6 +64,7 @@ final class MeterMonitorTest extends DatabaseTestCase
         $rows = array_column($overview['rows'], null, 'code');
         $plan = $rows['KAM-01']['plans'][0];
         self::assertSame(10.0, $rows['KAM-01']['rate_hours']);
+        self::assertSame([1100, 10, date('Y-m-d', strtotime('-1 day'))], [$rows['KAM-01']['last_reading']['value'], $rows['KAM-01']['last_reading']['delta'], substr($rows['KAM-01']['last_reading']['previous_at'], 0, 10)], 'Détail du relevé du jour');
         self::assertSame([400, 20, 40, date('Y-m-d', strtotime('+40 days')), 'ok'], [$plan['remaining'], $plan['pct'], $plan['days_left'], $plan['due_on'], $plan['status']]);
         self::assertSame([-20, 'due'], [$rows['KAM-03']['plans'][0]['remaining'], $rows['KAM-03']['status']]);
         self::assertSame(['none', 4, true], [$rows['KAM-04']['status'], $rows['KAM-04']['days_since'], $rows['KAM-04']['stale']]);

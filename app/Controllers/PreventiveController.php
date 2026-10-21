@@ -73,6 +73,13 @@ final class PreventiveController extends Controller
         return $this->redirect('/preventive', t('flash.updated'));
     }
 
+    public function delete(Request $request, array $params): Response
+    {
+        $this->service->delete($this->id($params));
+
+        return $this->redirect('/preventive', t('flash.plan_deleted'));
+    }
+
     public function generate(Request $request): Response
     {
         $created = $this->service->generateDue();

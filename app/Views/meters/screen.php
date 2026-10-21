@@ -32,7 +32,7 @@ $kpis = [
 
     <section class="wall__kpis">
         <?php foreach ($kpis as $key => [$label, $icon]): ?>
-            <button type="button" class="wall__kpi wall__kpi--<?= e($key) ?>" data-wall-kpi="<?= e($key) ?>" data-title="<?= e($key === 'read' ? t('meter_filter.unread') : t($label)) ?>" title="<?= e(t('meters.wall_filter_hint')) ?>">
+            <button type="button" class="wall__kpi wall__kpi--<?= e($key) ?>" data-wall-kpi="<?= e($key) ?>" data-title="<?= e(t($label)) ?>" title="<?= e(t('meters.wall_filter_hint')) ?>">
                 <span class="wall__kpi-label"><i data-lucide="<?= e($icon) ?>"></i><?= e(t($label)) ?></span>
                 <span class="wall__kpi-value" data-wall-value="<?= e($key) ?>">–</span>
             </button>
@@ -51,7 +51,7 @@ $kpis = [
         </div>
         <div class="wall__side">
             <div class="wall__panel">
-                <div class="wall__title"><h2><?= e(t('meter_filter.unread')) ?></h2><span data-wall-unread-count></span></div>
+                <div class="wall__title"><h2><button type="button" class="wall__link wall__link--title" data-wall-kpi="unread" data-title="<?= e(t('meter_filter.unread')) ?>" title="<?= e(t('meters.wall_filter_hint')) ?>"><?= e(t('meter_filter.unread')) ?></button></h2><span data-wall-unread-count></span></div>
                 <div class="wall__chips" data-wall-unread></div>
             </div>
             <div class="wall__panel wall__panel--chart">

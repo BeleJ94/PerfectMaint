@@ -64,6 +64,19 @@ final class PreventiveService
         });
     }
 
+    /**
+     * Suppression définitive d'un plan (administrateur). Les OT déjà générés sont conservés avec leur historique :
+     * ils perdent seulement leur lien au plan (clé étrangère ON DELETE SET NULL).
+     */
+    public function delete(int $id): void
+    {
+        $this->db->transaction(function () use ($id): void {
+            $before = $this->plans->findForUpdate($id) ?? throw HttpException::notFound();
+            $this->plans->delete($id);
+            $this->logger->log('delete', 'preventive_plan', $id, (int) $before['site_id'], $before, null, $before['title']);
+        });
+    }
+
     /** Valide et calcule les prochaines échéances à partir de la dernière exécution connue. */
     private function prepare(array $input): array
     {
@@ -82,9 +95,13 @@ final class PreventiveService
             throw Validator::fail('interval_hours', 'interval_basis_hours');
         }
         // Point de départ de l'avancement : jamais déduit en silence, l'index et la date de la dernière réalisation sont saisis.
-        foreach (['interval_hours' => 'last_done_hours', 'interval_km' => 'last_done_km'] as $interval => $done) {
+        foreach (['interval_hours' => ['last_done_hours', 'hour_meter', 'h'], 'interval_km' => ['last_done_km', 'odometer_km', 'km']] as $interval => [$done, $meter, $unit]) {
             if ($data[$interval] !== null && $data[$done] === null) {
                 throw Validator::fail($done, 'required');
+            }
+            // Une réalisation passée ne peut pas dépasser l'index actuel (les compteurs ne font que croître).
+            if ($data[$done] !== null && $equipment[$meter] !== null && $data[$done] > (int) $equipment[$meter]) {
+                throw Validator::fail($done, 'last_done_future', ['current' => format_number((int) $equipment[$meter]) . ' ' . $unit]);
             }
         }
         if (($data['interval_hours'] !== null || $data['interval_km'] !== null) && $data['last_done_at'] === null) {

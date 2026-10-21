@@ -89,6 +89,7 @@ return static function (Router $r): void {
     $r->post('/preventive/generate', [PreventiveController::class, 'generate'], ['permission' => 'preventive.manage']);
     $r->get('/preventive/{id}/edit', [PreventiveController::class, 'edit'], ['permission' => 'preventive.manage']);
     $r->post('/preventive/{id}', [PreventiveController::class, 'update'], ['permission' => 'preventive.manage']);
+    $r->post('/preventive/{id}/delete', [PreventiveController::class, 'delete'], ['permission' => 'preventive.delete']);
 
     // Supervision des index (compteurs) et échéances projetées
     $r->get('/meters', [MeterController::class, 'index'], ['permission' => 'equipment.view']);

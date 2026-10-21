@@ -966,28 +966,3 @@
 
   icons();
 })(window.jQuery, window.PMCore, window.PMTables, window.PMExport);
-
-/*
- * Plan préventif : au choix d'un engin, rappel de son compteur de suivi et point de départ proposé
- * (index actuel, date du jour) dans les champs encore vides — visible et modifiable avant enregistrement.
- */
-(function ($) {
-  'use strict';
-
-  var $form = $('[data-preventive-form]');
-  if (!$form.length) return;
-
-  $form.on('pm:equipment-selected', '[data-equipment-picker]', function (e, item) {
-    var $hint = $form.find('[data-preventive-basis]');
-    $hint.text($hint.data(item.meter_basis === 'km' ? 'km' : 'hours')).prop('hidden', !item.meter_basis);
-    if ($form.data('new') !== 1) return;
-    var fill = function (name, value) {
-      var $input = $form.find('[name="' + name + '"]');
-      if ($input.length && $input.val() === '' && value !== null && value !== undefined) $input.val(value);
-    };
-    fill('last_done_hours', item.hour_meter);
-    fill('last_done_km', item.odometer_km);
-    var d = new Date(); // date locale (pas UTC)
-    fill('last_done_at', d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
-  });
-})(jQuery);
