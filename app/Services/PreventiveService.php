@@ -81,6 +81,15 @@ final class PreventiveService
         if ($basis === 'hours' && $data['interval_km'] !== null && $data['interval_hours'] === null) {
             throw Validator::fail('interval_hours', 'interval_basis_hours');
         }
+        // Point de départ de l'avancement : jamais déduit en silence, l'index et la date de la dernière réalisation sont saisis.
+        foreach (['interval_hours' => 'last_done_hours', 'interval_km' => 'last_done_km'] as $interval => $done) {
+            if ($data[$interval] !== null && $data[$done] === null) {
+                throw Validator::fail($done, 'required');
+            }
+        }
+        if (($data['interval_hours'] !== null || $data['interval_km'] !== null) && $data['last_done_at'] === null) {
+            throw Validator::fail('last_done_at', 'required');
+        }
 
         $schedule = new PreventiveSchedule($data['interval_days'], $data['interval_hours'], $data['interval_km']);
         $reference = new DateTimeImmutable($data['last_done_at'] ?? 'today');

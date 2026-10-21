@@ -98,8 +98,9 @@ final class EquipmentRepository extends Repository
         }
 
         return $this->db->fetchAll(
-            "SELECT e.id, e.code, e.name, e.status, e.site_id, e.hour_meter, s.name AS site
-               FROM equipment e JOIN sites s ON s.id = e.site_id
+            "SELECT e.id, e.code, e.name, e.status, e.site_id, e.hour_meter, e.odometer_km, s.name AS site,
+                    COALESCE(e.meter_basis, c.meter_basis, 'hours') AS meter_basis
+               FROM equipment e JOIN sites s ON s.id = e.site_id LEFT JOIN equipment_categories c ON c.id = e.category_id
               WHERE $scopeSql AND e.is_archived = 0 AND $searchSql $siteSql
               ORDER BY e.code LIMIT " . max(1, min(50, $limit)),
             $params + $searchParams

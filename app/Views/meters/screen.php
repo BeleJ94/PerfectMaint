@@ -1,9 +1,10 @@
 <?php
 /** @var array $overview  @var string|null $siteName  @var bool $rotate  @var array $rules */
-$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/meters-screen.js']);
+$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/pm-meters.js', 'js/meters-screen.js']);
 $kpis = [
     'due' => ['meters.kpi_due', 'alert-octagon'],
     'soon' => ['meters.kpi_soon', 'wrench'],
+    'check' => ['meters.kpi_check', 'help-circle'],
     'ok' => ['meter_status.ok', 'check-circle-2'],
     'read' => ['meters.kpi_today', 'gauge'],
     'stale' => ['meters.kpi_stale', 'timer-off'],

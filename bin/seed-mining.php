@@ -345,20 +345,27 @@ $history = 0;
 if ((int) $db->fetchValue("SELECT COUNT(*) FROM preventive_plans p JOIN sites s ON s.id = p.site_id WHERE s.code = 'KAMAO'") === 0) {
     $preventiveService = $c->get(\App\Services\PreventiveService::class);
     $fleetRows = $db->fetchAll(
-        "SELECT e.id, e.code, e.site_id, s.code AS site FROM equipment e JOIN sites s ON s.id = e.site_id
+        "SELECT e.id, e.code, e.site_id, s.code AS site, COALESCE(e.hour_meter, 0) AS hours, COALESCE(e.odometer_km, 0) AS km,
+                COALESCE(e.meter_basis, c.meter_basis, 'hours') AS basis
+           FROM equipment e JOIN sites s ON s.id = e.site_id LEFT JOIN equipment_categories c ON c.id = e.category_id
           WHERE e.is_archived = 0 AND s.activity <> 'office' AND s.is_active = 1 ORDER BY s.code, e.code"
     );
     foreach ($fleetRows as $k => $eq) {
+        // Périodicité dans le compteur de suivi de l'engin, à partir de son index actuel.
+        $km = $eq['basis'] === 'km';
+        $meter = static fn (int $hours, int $kmInterval) => $km
+            ? ['interval_km' => $kmInterval, 'last_done_km' => (int) $eq['km']]
+            : ['interval_hours' => $hours, 'last_done_hours' => (int) $eq['hours']];
         $preventiveService->create([
-            'equipment_id' => $eq['id'], 'title' => 'Service 250 h – graissage, niveaux, filtres', 'is_active' => '1',
+            'equipment_id' => $eq['id'], 'title' => $km ? 'Service 5 000 km – graissage, niveaux, filtres' : 'Service 250 h – graissage, niveaux, filtres', 'is_active' => '1',
             'instructions' => "Graissage général.\nContrôle niveaux huile moteur, hydraulique, transmission.\nFiltres selon gamme constructeur.",
-            'interval_days' => 14, 'interval_hours' => 250, 'last_done_at' => date('Y-m-d', strtotime('-' . (3 + $k % 13) . ' days')),
-        ]);
+            'interval_days' => 14, 'last_done_at' => date('Y-m-d', strtotime('-' . (3 + $k % 13) . ' days')),
+        ] + $meter(250, 5000));
         if ($k % 3 === 0) {
             $preventiveService->create([
-                'equipment_id' => $eq['id'], 'title' => 'Vidange moteur 500 h', 'is_active' => '1',
-                'interval_days' => 30, 'interval_hours' => 500, 'last_done_at' => date('Y-m-d', strtotime('-' . (10 + $k % 25) . ' days')),
-            ]);
+                'equipment_id' => $eq['id'], 'title' => $km ? 'Vidange moteur 10 000 km' : 'Vidange moteur 500 h', 'is_active' => '1',
+                'interval_days' => 30, 'last_done_at' => date('Y-m-d', strtotime('-' . (10 + $k % 25) . ' days')),
+            ] + $meter(500, 10000));
         }
     }
 

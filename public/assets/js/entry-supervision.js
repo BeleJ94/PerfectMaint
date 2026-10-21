@@ -24,13 +24,16 @@
   var STATUS = {
     due: { badge: 'breakdown', bar: '', color: '#B42318' },
     soon: { badge: 'waiting_part', bar: ' life__bar--warn', color: '#B54708' },
+    check: { badge: 'maintenance', bar: ' life__bar--muted', color: LINE },
     ok: { badge: 'available', bar: ' life__bar--good', color: '#1E7A4C' },
     none: { badge: 'neutral', bar: '', color: MUTED }
   };
+  var M = window.PMMeters;
   var FILTERS = {
     all: function () { return true; },
     due: function (row) { return row.status === 'due'; },
     soon: function (row) { return row.status === 'soon'; },
+    check: function (row) { return row.status === 'check'; },
     ok: function (row) { return row.status === 'ok'; },
     unread: function (row) { return row.days_since !== 0; },
     stale: function (row) { return row.stale; }
@@ -53,18 +56,19 @@
     if (row.days_since === null) return t('js.meters.never');
     return row.days_since === 0 ? t('js.meters.today') : t('js.meters.days_ago', { n: row.days_since });
   }
-  function remainingText(plan) {
-    if (plan.remaining < 0) return t('js.meters.over', { n: num(-plan.remaining, 0), unit: plan.unit });
-    if (plan.remaining === 0) return t('js.meters.reached');
-    return num(plan.remaining, 0) + ' ' + plan.unit;
-  }
-  function whenText(plan) {
-    if (plan.remaining <= 0) return t('js.meters.at_hours', { n: num(plan.next_due, 0), unit: plan.unit });
-    return plan.due_on === null ? t('js.meters.no_date') : Core.formatDate(plan.due_on, locale) + ' · ' + t('js.meters.in_days', { n: plan.days_left });
-  }
+  /** Avancement entre ses deux bornes : dernière réalisation → échéance. */
   function bar(plan, status) {
-    if (!plan || plan.pct === null) return '';
-    return '<div class="life"><span class="life__bar' + STATUS[status].bar + '"><span style="width:' + Math.min(100, plan.pct) + '%"></span></span><strong>' + plan.pct + ' %</strong></div>';
+    var line = plan.pct === null ? ''
+      : '<div class="life"><span class="life__bar' + STATUS[status].bar + '"><span style="width:' + Math.min(100, plan.pct) + '%"></span></span><strong>' + plan.pct + ' %</strong></div>';
+    return line + '<span class="meter-bounds"><span class="' + (plan.start_confirmed ? '' : 'is-unconfirmed') + '">' + esc(M.lastDone(plan)) + '</span>'
+      + '<span>' + esc(M.nextDue(plan)) + '</span></span>';
+  }
+  /** Reste et date prévue ; la raison d'un « à vérifier » s'affiche en dessous. */
+  function dueBlock(plan, row) {
+    var issue = M.issue(plan, row);
+    return '<div class="sup-card__due"><strong class="' + (plan.remaining !== null && plan.remaining <= 0 ? 'overdue' : '') + '">' + esc(M.remaining(plan)) + '</strong>'
+      + '<span class="muted small">' + esc(M.when(plan)) + '</span></div>'
+      + (issue ? '<span class="meter-issue"><i data-lucide="alert-triangle"></i>' + esc(issue) + '</span>' : '');
   }
 
   // ---------------------------------------------------------------- Liste
@@ -80,9 +84,7 @@
     return html + '<div class="sup-card__plan"><div class="sup-card__plan-title"><span>' + esc(plan.title)
       + (row.plans.length > 1 ? ' <span class="muted small">' + esc(t('js.meters.more_plans', { n: row.plans.length - 1 })) + '</span>' : '')
       + (plan.open_work_order_id ? ' <span class="muted small">· ' + esc(t('js.planned')) + '</span>' : '') + '</span></div>'
-      + bar(plan, plan.status)
-      + '<div class="sup-card__due"><strong class="' + (plan.remaining <= 0 ? 'overdue' : '') + '">' + esc(remainingText(plan)) + '</strong>'
-      + '<span class="muted small">' + esc(whenText(plan)) + '</span></div></div></article>';
+      + bar(plan, plan.status) + dueBlock(plan, row) + '</div></article>';
   }
 
   function visibleRows() {
@@ -94,7 +96,7 @@
 
   function render() {
     var s = state.summary;
-    var counts = { due: s.due, soon: s.soon, ok: state.rows.filter(FILTERS.ok).length, unread: s.equipment - s.read_today, stale: s.stale };
+    var counts = { due: s.due, soon: s.soon, check: s.check, ok: s.ok, unread: s.equipment - s.read_today, stale: s.stale };
     Object.keys(counts).forEach(function (key) {
       $('[data-sup-value="' + key + '"]').text(counts[key]);
       $('[data-sup-kpi="' + key + '"]').toggleClass('is-hot', counts[key] > 0)
@@ -146,9 +148,8 @@
     var rate = metric === 'odometer_km' ? d.rate_km : d.rate_hours;
     var plans = d.plans.map(function (p) {
       return '<li class="sup-plan sup-plan--' + p.status + '"><div><strong>' + esc(p.title) + '</strong>'
-        + '<span class="muted small">' + esc(t('js.wall.threshold', { n: num(p.next_due, 0), unit: p.unit })) + (p.open_work_order_id ? ' · ' + esc(t('js.planned')) : '') + '</span></div>'
-        + bar(p, p.status)
-        + '<div class="sup-card__due"><strong class="' + (p.remaining <= 0 ? 'overdue' : '') + '">' + esc(remainingText(p)) + '</strong><span class="muted small">' + esc(whenText(p)) + '</span></div></li>';
+        + (p.open_work_order_id ? '<span class="muted small">' + esc(t('js.planned')) + '</span>' : '') + '</div>'
+        + bar(p, p.status) + dueBlock(p, d) + '</li>';
     }).join('');
     var both = d.hour_meter !== null && d.odometer_km !== null;
     var readings = d.series.slice(-8).reverse().map(function (r) {

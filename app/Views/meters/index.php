@@ -1,6 +1,6 @@
 <?php
 /** @var array $sites  @var int|null $siteId  @var array $overview  @var int|null $selected  @var array $rules */
-$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/meters.js']);
+$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/pm-meters.js', 'js/meters.js']);
 $s = $overview['summary'];
 ?>
 <div class="page-header">
@@ -40,6 +40,11 @@ $s = $overview['summary'];
         <div class="kpi__value" data-meters-value="soon"><?= e($s['soon']) ?></div>
         <div class="kpi__hint"><?= e(t('meters.kpi_soon_hint', $rules)) ?></div>
     </button>
+    <button type="button" class="kpi kpi--button<?= $s['check'] > 0 ? ' kpi--info' : '' ?>" data-meters-kpi="check">
+        <div class="kpi__label"><?= e(t('meters.kpi_check')) ?></div>
+        <div class="kpi__value" data-meters-value="check"><?= e($s['check']) ?></div>
+        <div class="kpi__hint"><?= e(t('meters.kpi_check_hint')) ?></div>
+    </button>
     <button type="button" class="kpi kpi--button<?= $s['read_today'] < $s['equipment'] ? ' kpi--warn' : '' ?>" data-meters-kpi="unread">
         <div class="kpi__label"><?= e(t('meters.kpi_today')) ?></div>
         <div class="kpi__value"><span data-meters-value="read_today"><?= e($s['read_today']) ?></span><small>/ <span data-meters-value="equipment"><?= e($s['equipment']) ?></span></small></div>
@@ -57,7 +62,7 @@ $s = $overview['summary'];
         <h2><i data-lucide="list-checks" class="title-icon"></i><?= e(t('meters.table_title')) ?></h2>
     </div>
     <div class="chips" role="group" aria-label="<?= e(t('fields.status')) ?>">
-        <?php foreach (['all', 'due', 'soon', 'unread', 'stale'] as $i => $filter): ?>
+        <?php foreach (['all', 'due', 'soon', 'check', 'unread', 'stale'] as $i => $filter): ?>
             <button type="button" class="chip-btn" data-meters-filter="<?= e($filter) ?>" aria-pressed="<?= $i === 0 ? 'true' : 'false' ?>"><?= e(t('meter_filter.' . $filter)) ?></button>
         <?php endforeach; ?>
     </div>

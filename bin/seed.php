@@ -117,6 +117,7 @@ foreach ($equipment as $code => $ids) {
             'equipment_id' => $equipmentId, 'title' => 'Révision périodique', 'is_active' => '1',
             'instructions' => "Contrôle freins, niveaux, chaînes et fourches.\nGraissage mât. Vérification batterie.",
             'interval_days' => 90, 'interval_hours' => 500,
+            'last_done_hours' => (int) $db->fetchValue('SELECT COALESCE(hour_meter, 0) FROM equipment WHERE id = :id', ['id' => $equipmentId]),
             'last_done_at' => date('Y-m-d', strtotime('-' . (60 + 7 * $k) . ' days')),
         ]);
         if ($k % 3 === 0) {

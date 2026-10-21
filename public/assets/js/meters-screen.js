@@ -22,12 +22,13 @@
   var MAX_CHIPS = 18;
   var PAUSE_MS = 60000; // après un clic, la rotation reprend seule au bout de ce délai
   var DAY = 86400000;
-  var RANK = { due: 0, soon: 1, ok: 2, none: 3 };
+  var RANK = { due: 0, soon: 1, check: 2, ok: 3, none: 4 };
+  var M = window.PMMeters;
 
   var TEXT = '#C5CED8';
   var GRID = '#263243';
   var LINE = '#6CB0F2';
-  var STATUS_COLOR = { due: '#F97066', soon: '#FDB022', ok: '#47CD89', none: '#98A2B3' };
+  var STATUS_COLOR = { due: '#F97066', soon: '#FDB022', check: '#6CB0F2', ok: '#47CD89', none: '#98A2B3' };
 
   var state = { rows: boot.overview.rows, loadedAt: Date.now(), view: 0, step: 0, chart: null, series: {}, flash: {}, failed: false, filter: null, search: '', pausedUntil: 0, chartId: null };
 
@@ -59,6 +60,7 @@
   var FILTERS = {
     due: function (r) { return r.status === 'due'; },
     soon: function (r) { return r.status === 'soon'; },
+    check: function (r) { return r.status === 'check'; },
     ok: function (r) { return r.status === 'ok'; },
     read: function (r) { return r.days_since !== 0; },
     stale: function (r) { return r.stale; }
@@ -89,16 +91,14 @@
       return open + '<span class="wall__plan"><strong>' + esc(t('js.meters.no_plan')) + '</strong><small>'
         + (row.current === null ? '—' : esc(num(row.current, 0)) + ' ' + esc(row.unit)) + '</small></span><span></span><span></span></div>';
     }
-    var remaining = plan.remaining < 0 ? t('js.meters.over', { n: num(-plan.remaining, 0), unit: plan.unit })
-      : (plan.remaining === 0 ? t('js.meters.reached') : num(plan.remaining, 0) + ' ' + plan.unit);
-    var when = plan.remaining <= 0 ? t('js.meters.at_hours', { n: num(plan.next_due, 0), unit: plan.unit })
-      : (plan.due_on === null ? t('js.meters.no_date') : Core.formatDate(plan.due_on, locale) + ' · ' + t('js.meters.in_days', { n: plan.days_left }));
+    // Avancement entre ses deux bornes (dernière réalisation → échéance) ; la raison d'un « à vérifier » remplace la date prévue.
+    var issue = M.issue(plan, row);
     return open
-      + '<span class="wall__plan"><strong>' + esc(plan.title) + '</strong><small>' + esc(num(row.current, 0)) + ' ' + esc(row.unit)
+      + '<span class="wall__plan"><strong>' + esc(plan.title) + '</strong><small>' + (row.current === null ? '—' : esc(num(row.current, 0)) + ' ' + esc(row.unit))
       + (row.rate === null ? '' : ' · ' + esc(rateText(row))) + '</small></span>'
-      + '<span class="wall__progress"><span class="wall__bar"><span style="width:' + Math.min(100, plan.pct === null ? 0 : plan.pct) + '%"></span></span>'
-      + '<b>' + (plan.pct === null ? '—' : plan.pct + ' %') + '</b></span>'
-      + '<span class="wall__due"><strong>' + esc(remaining) + '</strong><small>' + esc(when) + '</small></span></div>';
+      + '<span class="wall__progress"><span class="wall__progress-line"><span class="wall__bar"><span style="width:' + Math.min(100, plan.pct === null ? 0 : plan.pct) + '%"></span></span>'
+      + '<b>' + (plan.pct === null ? '—' : plan.pct + ' %') + '</b></span><small>' + esc(M.bounds(plan)) + '</small></span>'
+      + '<span class="wall__due"><strong>' + esc(M.remaining(plan)) + '</strong><small' + (issue ? ' class="wall__issue"' : '') + '>' + esc(issue || M.when(plan)) + '</small></span></div>';
   }
 
   function render() {
@@ -118,6 +118,7 @@
     var values = {
       due: count(function (r) { return r.status === 'due'; }),
       soon: count(function (r) { return r.status === 'soon'; }),
+      check: count(function (r) { return r.status === 'check'; }),
       ok: count(function (r) { return r.status === 'ok'; }),
       read: count(function (r) { return r.days_since === 0; }) + ' / ' + rows.length,
       stale: count(function (r) { return r.stale; })
@@ -125,6 +126,7 @@
     Object.keys(values).forEach(function (key) { $('[data-wall-value="' + key + '"]').text(values[key]); });
     $('[data-wall-kpi="due"]').toggleClass('is-on', values.due > 0);
     $('[data-wall-kpi="soon"]').toggleClass('is-on', values.soon > 0);
+    $('[data-wall-kpi="check"]').toggleClass('is-on', values.check > 0);
     $('[data-wall-kpi="stale"]').toggleClass('is-on', values.stale > 0);
     $('[data-wall-kpi="read"]').toggleClass('is-on', count(function (r) { return r.days_since !== 0; }) > 0);
 
@@ -398,12 +400,13 @@
   function modalHtml(d) {
     var age = d.days_since === null ? t('js.meters.never') : (d.days_since === 0 ? t('js.meters.today') : t('js.meters.days_ago', { n: d.days_since }));
     var plans = d.plans.map(function (p) {
-      var remaining = p.remaining < 0 ? t('js.meters.over', { n: num(-p.remaining, 0), unit: p.unit }) : (p.remaining === 0 ? t('js.meters.reached') : num(p.remaining, 0) + ' ' + p.unit);
-      var when = p.due_on === null ? '—' : Core.formatDate(p.due_on, locale) + ' · ' + t('js.meters.in_days', { n: p.days_left });
-      return '<tr class="wall__row--' + p.status + '"><td><strong>' + esc(p.title) + '</strong>' + (p.open_work_order_id ? '<small>' + esc(t('js.planned')) + '</small>' : '') + '</td>'
+      var issue = M.issue(p, d);
+      return '<tr class="wall__row--' + p.status + '"><td><strong>' + esc(p.title) + '</strong>' + (p.open_work_order_id ? '<small>' + esc(t('js.planned')) + '</small>' : '')
+        + (issue ? '<small class="wall__issue">' + esc(issue) + '</small>' : '') + '</td>'
         + '<td class="num">' + esc(num(p.next_due, 0)) + ' ' + esc(p.unit) + '</td>'
-        + '<td><span class="wall__progress"><span class="wall__bar"><span style="width:' + Math.min(100, p.pct === null ? 0 : p.pct) + '%"></span></span><b>' + (p.pct === null ? '—' : p.pct + ' %') + '</b></span></td>'
-        + '<td class="num"><strong>' + esc(remaining) + '</strong></td><td>' + esc(p.remaining <= 0 ? '—' : when) + '</td>'
+        + '<td><span class="wall__progress"><span class="wall__progress-line"><span class="wall__bar"><span style="width:' + Math.min(100, p.pct === null ? 0 : p.pct) + '%"></span></span><b>' + (p.pct === null ? '—' : p.pct + ' %') + '</b></span>'
+        + '<small>' + esc(M.lastDone(p)) + '</small></span></td>'
+        + '<td class="num"><strong>' + esc(M.remaining(p)) + '</strong></td><td>' + esc(p.remaining === null || p.remaining <= 0 ? '—' : M.when(p)) + '</td>'
         + '<td><span class="wall__badge">' + esc(t('meter_status.' + p.status)) + '</span></td></tr>';
     }).join('');
     var readings = d.series.slice(-8).reverse().map(function (r) {

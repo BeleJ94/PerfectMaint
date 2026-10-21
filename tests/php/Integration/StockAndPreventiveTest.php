@@ -64,7 +64,7 @@ final class StockAndPreventiveTest extends DatabaseTestCase
         $preventive = $this->service($this->manager, PreventiveService::class);
 
         $planId = $preventive->create([
-            'equipment_id' => (string) $equipment, 'title' => 'Révision', 'interval_days' => '30', 'interval_hours' => '250',
+            'equipment_id' => (string) $equipment, 'title' => 'Révision', 'interval_days' => '30', 'interval_hours' => '250', 'last_done_hours' => '1200',
             'last_done_at' => date('Y-m-d', strtotime('-40 days')), 'is_active' => '1',
         ]);
         $plan = $this->row('SELECT * FROM preventive_plans WHERE id = :id', ['id' => $planId]);
@@ -104,7 +104,7 @@ final class StockAndPreventiveTest extends DatabaseTestCase
     {
         $equipment = $this->createEquipment($this->site, 'CH-02', 'available', 500);
         $preventive = $this->service($this->manager, PreventiveService::class);
-        $preventive->create(['equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => '200', 'last_done_hours' => '250', 'is_active' => '1']);
+        $preventive->create(['equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => '200', 'last_done_hours' => '250', 'last_done_at' => date('Y-m-d'), 'is_active' => '1']);
         self::assertCount(1, $preventive->generateDue(), '500 h ≥ 250 + 200 h');
     }
 
@@ -113,7 +113,7 @@ final class StockAndPreventiveTest extends DatabaseTestCase
         $equipment = $this->createEquipment($this->site, 'BUS-02');
         $this->db->execute("UPDATE equipment SET odometer_km = 61000, meter_basis = 'km' WHERE id = :id", ['id' => $equipment]);
         $preventive = $this->service($this->manager, PreventiveService::class);
-        $id = $preventive->create(['equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'is_active' => '1']);
+        $id = $preventive->create(['equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'last_done_at' => date('Y-m-d'), 'is_active' => '1']);
         self::assertSame(60000, (int) $this->db->fetchValue('SELECT next_due_km FROM preventive_plans WHERE id = :id', ['id' => $id]));
         self::assertCount(1, $preventive->generateDue(), '61 000 km ≥ 50 000 + 10 000 km');
     }

@@ -40,7 +40,7 @@ final class MeterMonitorTest extends DatabaseTestCase
     {
         return $this->service($this->manager, PreventiveService::class)->create([
             'equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => (string) $interval,
-            'last_done_hours' => (string) $lastDone, 'is_active' => '1',
+            'last_done_hours' => (string) $lastDone, 'last_done_at' => date('Y-m-d'), 'is_active' => '1',
         ]);
     }
 
@@ -59,7 +59,7 @@ final class MeterMonitorTest extends DatabaseTestCase
 
         $overview = $this->service($this->manager, MeterMonitorService::class)->overview();
         self::assertSame(['KAM-03', 'KAM-02', 'KAM-01', 'KAM-04'], array_column($overview['rows'], 'code'), 'Le plus urgent d\'abord, hors périmètre exclu');
-        self::assertSame(['equipment' => 4, 'due' => 1, 'soon' => 1, 'read_today' => 3, 'stale' => 1], $overview['summary']);
+        self::assertSame(['equipment' => 4, 'due' => 1, 'soon' => 1, 'check' => 0, 'ok' => 1, 'read_today' => 3, 'stale' => 1], $overview['summary']);
 
         $rows = array_column($overview['rows'], null, 'code');
         $plan = $rows['KAM-01']['plans'][0];
@@ -104,17 +104,39 @@ final class MeterMonitorTest extends DatabaseTestCase
             );
         }
         $this->service($this->manager, PreventiveService::class)->create([
-            'equipment_id' => (string) $bus, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'is_active' => '1',
+            'equipment_id' => (string) $bus, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'last_done_at' => date('Y-m-d'), 'is_active' => '1',
         ]);
 
         $row = $this->service($this->manager, MeterMonitorService::class)->overview()['rows'][0];
         self::assertSame(['odometer_km', 'km', 59200, 200.0], [$row['metric'], $row['unit'], $row['current'], $row['rate']]);
         $plan = $row['plans'][0];
         self::assertSame([60000, 'km', 800, 92, 4, 'soon'], [$plan['next_due'], $plan['unit'], $plan['remaining'], $plan['pct'], $plan['days_left'], $plan['status']]);
+        self::assertSame([50000, true], [$plan['start'], $plan['start_confirmed']], 'Bornes de l\'avancement : départ saisi');
 
-        // Forçage sur l'engin : prime sur la catégorie.
+        // Forçage sur l'engin : prime sur la catégorie ; le plan au km n'est plus calculé mais signalé.
         $this->db->execute("UPDATE equipment SET meter_basis = 'hours' WHERE id = :id", ['id' => $bus]);
-        self::assertSame('hour_meter', $this->service($this->manager, MeterMonitorService::class)->overview()['rows'][0]['metric']);
+        $row = $this->service($this->manager, MeterMonitorService::class)->overview()['rows'][0];
+        self::assertSame(['hour_meter', 'check', 'mismatch', null], [$row['metric'], $row['status'], $row['plans'][0]['issue'], $row['plans'][0]['pct']]);
+    }
+
+    /** « Dans les temps » seulement si la situation est établie : sinon « à vérifier », avec la raison. */
+    public function testUnestablishedSituationsAreToCheck(): void
+    {
+        $legacy = $this->createEquipment($this->kamao, 'KAM-01', 'available', 1100);
+        $this->dailyReadings($legacy, 1100, 10, 10);
+        // Plan ancien, sans point de départ saisi (déduit de l'échéance).
+        $this->db->execute(
+            "INSERT INTO preventive_plans (site_id, equipment_id, title, interval_hours, next_due_hours, is_active)
+             VALUES (:s, :e, 'Vidange', 500, 1500, 1)",
+            ['s' => $this->kamao, 'e' => $legacy]
+        );
+        $fresh = $this->createEquipment($this->kamao, 'KAM-02', 'available', 1000);
+        $this->dailyReadings($fresh, 1000, 0, 0); // un seul relevé : rythme inconnu
+        $this->plan($fresh, 500, 1000);
+
+        $rows = array_column($this->service($this->manager, MeterMonitorService::class)->overview()['rows'], null, 'code');
+        self::assertSame(['check', 'unconfirmed', 1000, false], [$rows['KAM-01']['status'], $rows['KAM-01']['plans'][0]['issue'], $rows['KAM-01']['plans'][0]['start'], $rows['KAM-01']['plans'][0]['start_confirmed']]);
+        self::assertSame(['check', 'no_rate', 0], [$rows['KAM-02']['status'], $rows['KAM-02']['plans'][0]['issue'], $rows['KAM-02']['plans'][0]['pct']]);
     }
 
     public function testPagesAndFeeds(): void

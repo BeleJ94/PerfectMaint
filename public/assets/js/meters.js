@@ -25,9 +25,11 @@
   var STATUS = {
     due: { badge: 'breakdown', bar: '', color: '#B42318' },
     soon: { badge: 'waiting_part', bar: ' life__bar--warn', color: '#B54708' },
+    check: { badge: 'maintenance', bar: ' life__bar--muted', color: LINE },
     ok: { badge: 'available', bar: ' life__bar--good', color: '#1E7A4C' },
     none: { badge: 'neutral', bar: '', color: MUTED }
   };
+  var M = window.PMMeters;
 
   var state = { rows: boot.overview.rows, filter: 'all', selected: null, days: 30, metric: 'hour_meter', detail: null, chart: null };
 
@@ -50,10 +52,11 @@
     all: function () { return true; },
     due: function (row) { return row.status === 'due'; },
     soon: function (row) { return row.status === 'soon'; },
+    check: function (row) { return row.status === 'check'; },
     unread: function (row) { return row.days_since !== 0; },
     stale: function (row) { return row.stale; }
   };
-  var RANK = { due: 0, soon: 1, ok: 2, none: 3 };
+  var RANK = { due: 0, soon: 1, check: 2, ok: 3, none: 4 };
   var LAST = Number.MAX_SAFE_INTEGER; // valeur absente : en fin de tri
 
   function readingCell(row) {
@@ -65,11 +68,16 @@
 
   /** Reste avant le seuil, puis date prévue au rythme actuel. */
   function dueCell(plan) {
-    if (plan.remaining < 0) return '<span class="overdue">' + esc(t('js.meters.over', { n: num(-plan.remaining, 0), unit: plan.unit })) + '</span>';
-    if (plan.remaining === 0) return '<span class="overdue">' + esc(t('js.meters.reached')) + '</span>';
-    var remaining = '<strong>' + esc(num(plan.remaining, 0)) + ' ' + esc(plan.unit) + '</strong>';
-    if (plan.due_on === null) return remaining + '<br><span class="muted small" title="' + esc(t('js.meters.no_rate_hint')) + '">' + esc(t('js.meters.no_date')) + '</span>';
-    return remaining + '<br><span class="muted small">' + esc(Core.formatDate(plan.due_on, locale)) + ' · ' + esc(t('js.meters.in_days', { n: plan.days_left })) + '</span>';
+    if (plan.remaining === null) return '<span class="muted">—</span>';
+    var overdue = plan.remaining <= 0;
+    return '<strong class="' + (overdue ? 'overdue' : '') + '">' + esc(M.remaining(plan)) + '</strong><br><span class="muted small"'
+      + (plan.due_on === null && !overdue ? ' title="' + esc(t('js.meters.no_rate_hint')) + '"' : '') + '>' + esc(M.when(plan)) + '</span>';
+  }
+
+  /** Raison d'un « à vérifier » (point de départ déduit, rythme inconnu, plan dans le mauvais compteur…). */
+  function issueHtml(plan, row) {
+    var text = M.issue(plan, row);
+    return text ? '<span class="meter-issue"><i data-lucide="alert-triangle"></i>' + esc(text) + '</span>' : '';
   }
 
   function planCell(row) {
@@ -78,13 +86,17 @@
     var more = row.plans.length > 1 ? ' <span class="muted small">' + esc(t('js.meters.more_plans', { n: row.plans.length - 1 })) + '</span>' : '';
     var link = plan.open_work_order_id ? Core.fillUrl(urls.work_order, { id: plan.open_work_order_id }) : (boot.can_plan ? Core.fillUrl(urls.plan, { id: plan.id }) : null);
     return (link ? '<a href="' + esc(link) + '">' + esc(plan.title) + '</a>' : esc(plan.title)) + more
-      + '<br><span class="muted small">' + esc(t('js.meters.at_hours', { n: num(plan.next_due, 0), unit: plan.unit }))
-      + (plan.open_work_order_id ? ' · ' + esc(t('js.planned')) : '') + '</span>';
+      + (plan.open_work_order_id ? ' <span class="muted small">· ' + esc(t('js.planned')) + '</span>' : '')
+      + issueHtml(plan, row);
   }
 
+  /** Avancement entre ses deux bornes : dernière réalisation → échéance. */
   function progressBar(plan, status) {
-    if (!plan || plan.pct === null) return '<span class="muted">—</span>';
-    return '<div class="life"><span class="life__bar' + STATUS[status].bar + '"><span style="width:' + Math.min(100, plan.pct) + '%"></span></span><strong>' + plan.pct + ' %</strong></div>';
+    if (!plan) return '<span class="muted">—</span>';
+    var bar = plan.pct === null ? '<span class="muted">—</span>'
+      : '<div class="life"><span class="life__bar' + STATUS[status].bar + '"><span style="width:' + Math.min(100, plan.pct) + '%"></span></span><strong>' + plan.pct + ' %</strong></div>';
+    return bar + '<span class="meter-bounds"><span class="' + (plan.start_confirmed ? '' : 'is-unconfirmed') + '">' + esc(M.lastDone(plan)) + '</span>'
+      + '<span>' + esc(M.nextDue(plan)) + '</span></span>';
   }
 
   function actionsCell(row) {
@@ -135,7 +147,7 @@
       column(planCell, function (row) { return row.plans[0] ? row.plans[0].title : ''; }, function (row) { return row.plans[0] ? row.plans[0].title : ''; }),
       column(function (row) { return progressBar(row.plans[0], row.status); }, function (row) { return row.plans[0] && row.plans[0].pct !== null ? row.plans[0].pct : -1; }),
       column(function (row) { return row.plans[0] ? dueCell(row.plans[0]) : '<span class="muted">—</span>'; },
-        function (row) { return row.plans[0] ? row.plans[0].remaining : LAST; }, null, { className: 'nowrap' }),
+        function (row) { return row.plans[0] && row.plans[0].remaining !== null ? row.plans[0].remaining : LAST; }, null, { className: 'nowrap' }),
       column(function (row) { return '<span class="badge badge--' + STATUS[row.status].badge + '">' + esc(t('meter_status.' + row.status)) + '</span>'; },
         function (row) { return RANK[row.status]; }, function (row) { return t('meter_status.' + row.status); }),
       column(actionsCell, null, null, { orderable: false, className: 'nowrap meters-actions' })
@@ -155,6 +167,7 @@
     });
     $('[data-meters-kpi="due"]').toggleClass('kpi--alert', summary.due > 0);
     $('[data-meters-kpi="soon"]').toggleClass('kpi--warn', summary.soon > 0);
+    $('[data-meters-kpi="check"]').toggleClass('kpi--info', summary.check > 0);
     $('[data-meters-kpi="unread"]').toggleClass('kpi--warn', summary.read_today < summary.equipment);
     $('[data-meters-kpi="stale"]').toggleClass('kpi--alert', summary.stale > 0);
   }
@@ -288,7 +301,7 @@
     $('[data-meters-detail-status]').html('<span class="badge badge--' + STATUS[d.status].badge + '">' + esc(t('meter_status.' + d.status)) + '</span>');
     $('[data-meters-detail-link]').attr('href', Core.fillUrl(urls.equipment, { id: d.id }));
     $('[data-meters-detail-plans]').html(d.plans.length ? d.plans.map(function (p) {
-      return '<tr><td><strong>' + esc(p.title) + '</strong>' + (p.open_work_order_id ? ' <span class="muted small">· ' + esc(t('js.planned')) + '</span>' : '') + '</td>'
+      return '<tr><td><strong>' + esc(p.title) + '</strong>' + (p.open_work_order_id ? ' <span class="muted small">· ' + esc(t('js.planned')) + '</span>' : '') + issueHtml(p, d) + '</td>'
         + '<td class="num nowrap">' + esc(num(p.next_due, 0)) + ' ' + esc(p.unit) + '</td><td>' + progressBar(p, p.status) + '</td>'
         + '<td class="nowrap">' + dueCell(p) + '</td>'
         + '<td><span class="badge badge--' + STATUS[p.status].badge + '">' + esc(t('meter_status.' + p.status)) + '</span></td></tr>';

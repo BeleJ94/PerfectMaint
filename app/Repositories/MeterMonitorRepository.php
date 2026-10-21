@@ -46,6 +46,7 @@ final class MeterMonitorRepository extends Repository
 
         return $this->db->fetchAll(
             "SELECT p.id, p.equipment_id, p.title, p.interval_hours, p.next_due_hours, p.interval_km, p.next_due_km,
+                    p.last_done_at, p.last_done_hours, p.last_done_km,
                     (SELECT w.id FROM work_orders w WHERE w.preventive_plan_id = p.id
                         AND w.status IN ('open', 'in_progress', 'waiting_part') LIMIT 1) AS open_work_order_id
                FROM preventive_plans p

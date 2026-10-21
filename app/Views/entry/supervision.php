@@ -4,10 +4,11 @@
  * Même lecture que l'écran mural (/meters/screen), en cartes : téléphone en une colonne, ordinateur en grille.
  * @var array $overview  @var array $sites  @var int|null $siteId  @var array $rules
  */
-$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/entry-supervision.js']);
+$view->share('pageScripts', ['vendor/chart.umd.min.js', 'js/pm-reading.js', 'js/pm-meters.js', 'js/entry-supervision.js']);
 $kpis = [
     'due' => ['meters.kpi_due', 'alert-octagon'],
     'soon' => ['meters.kpi_soon', 'wrench'],
+    'check' => ['meters.kpi_check', 'help-circle'],
     'ok' => ['meter_status.ok', 'check-circle-2'],
     'unread' => ['js.sup.unread', 'gauge'],
     'stale' => ['meters.kpi_stale', 'timer-off'],

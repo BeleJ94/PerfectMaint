@@ -118,7 +118,7 @@ final class MailSettingsTest extends DatabaseTestCase
         $site = $this->createSite('KAMAO');
         $equipment = $this->createEquipment($site, 'KAM-01', 'available', 1520);
         $this->service($this->admin, PreventiveService::class)->create([
-            'equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => '500', 'last_done_hours' => '1000', 'is_active' => '1',
+            'equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_hours' => '500', 'last_done_hours' => '1000', 'last_done_at' => date('Y-m-d'), 'is_active' => '1',
         ]);
 
         self::assertGreaterThan(0, $this->mail()->sendAlerts());
