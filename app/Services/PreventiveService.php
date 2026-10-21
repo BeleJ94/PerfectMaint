@@ -73,6 +73,14 @@ final class PreventiveService
         }
         $equipment = $this->equipment->find($data['equipment_id']) ?? throw Validator::fail('equipment_id', 'exists');
         $data['site_id'] = (int) $equipment['site_id'];
+        // Une périodicité au compteur doit être exprimée dans le compteur de suivi de l'engin (catégorie ou forçage).
+        $basis = $equipment['meter_basis'] ?? 'hours';
+        if ($basis === 'km' && $data['interval_hours'] !== null && $data['interval_km'] === null) {
+            throw Validator::fail('interval_km', 'interval_basis_km');
+        }
+        if ($basis === 'hours' && $data['interval_km'] !== null && $data['interval_hours'] === null) {
+            throw Validator::fail('interval_hours', 'interval_basis_hours');
+        }
 
         $schedule = new PreventiveSchedule($data['interval_days'], $data['interval_hours'], $data['interval_km']);
         $reference = new DateTimeImmutable($data['last_done_at'] ?? 'today');

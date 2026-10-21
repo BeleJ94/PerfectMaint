@@ -111,11 +111,21 @@ final class StockAndPreventiveTest extends DatabaseTestCase
     public function testPreventiveTriggeredByOdometer(): void
     {
         $equipment = $this->createEquipment($this->site, 'BUS-02');
-        $this->db->execute('UPDATE equipment SET odometer_km = 61000 WHERE id = :id', ['id' => $equipment]);
+        $this->db->execute("UPDATE equipment SET odometer_km = 61000, meter_basis = 'km' WHERE id = :id", ['id' => $equipment]);
         $preventive = $this->service($this->manager, PreventiveService::class);
         $id = $preventive->create(['equipment_id' => (string) $equipment, 'title' => 'Vidange', 'interval_km' => '10000', 'last_done_km' => '50000', 'is_active' => '1']);
         self::assertSame(60000, (int) $this->db->fetchValue('SELECT next_due_km FROM preventive_plans WHERE id = :id', ['id' => $id]));
         self::assertCount(1, $preventive->generateDue(), '61 000 km ≥ 50 000 + 10 000 km');
+    }
+
+    public function testMeterIntervalMustMatchTheTrackingMeter(): void
+    {
+        $bus = $this->createEquipment($this->site, 'BUS-03');
+        $this->db->execute("UPDATE equipment SET meter_basis = 'km' WHERE id = :id", ['id' => $bus]);
+        $this->expectException(\App\Core\ValidationException::class);
+        $this->service($this->manager, PreventiveService::class)->create([
+            'equipment_id' => (string) $bus, 'title' => 'Vidange', 'interval_hours' => '500', 'is_active' => '1',
+        ]);
     }
 
     public function testPreventiveRequiresAnInterval(): void

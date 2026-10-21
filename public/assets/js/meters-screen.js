@@ -195,7 +195,7 @@
     });
 
     var last = points[points.length - 1];
-    var plan = d.plans[0];
+    var plan = d.plans.filter(function (p) { return p.metric === d.metric; })[0]; // seuil dans le compteur de la courbe
     // Chaque relevé est un point : gros quand il y en a peu, plus fin quand la période en contient beaucoup.
     var unit = parseFloat(getComputedStyle(document.body).fontSize) / 20; // 1 en Full HD
     var radius = (points.length <= 3 ? 6 : (points.length <= 45 ? 4 : (points.length <= 120 ? 3 : (points.length <= 400 ? 2.2 : 1.7)))) * unit;
