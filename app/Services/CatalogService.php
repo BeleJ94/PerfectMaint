@@ -87,4 +87,15 @@ final class CatalogService
             $this->logger->log('update', 'model', $id, null, $before, $this->catalog->findModel($id), $before['brand'] . ' ' . $data['name']);
         });
     }
+
+    /** Compteur de suivi par défaut des engins de la catégorie (heures ou km). */
+    public function updateCategory(int $id, array $input): void
+    {
+        $data = Validator::validate($input, ['meter_basis' => 'required|in:hours,km']);
+        $this->db->transaction(function () use ($id, $data): void {
+            $before = $this->catalog->findCategory($id) ?? throw HttpException::notFound();
+            $this->catalog->updateCategoryMeterBasis($id, $data['meter_basis']);
+            $this->logger->log('update', 'category', $id, null, ['meter_basis' => $before['meter_basis']], ['meter_basis' => $data['meter_basis']], $before['name']);
+        });
+    }
 }

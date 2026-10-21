@@ -121,8 +121,8 @@ final class MeterMonitorService
         }
         usort($projected, static fn (array $a, array $b) => self::planUrgency($a) <=> self::planUrgency($b));
 
-        // Compteur de référence de l'engin : celui de l'échéance la plus proche, sinon celui qui est relevé.
-        $metric = $projected[0]['metric'] ?? ($hours === null && $km !== null ? 'odometer_km' : 'hour_meter');
+        // Compteur de suivi : celui de la catégorie, ou forcé sur l'engin (heures pour les engins, km pour les véhicules).
+        $metric = ($e['meter_basis'] ?? 'hours') === 'km' ? 'odometer_km' : 'hour_meter';
 
         return [
             'id' => (int) $e['id'],

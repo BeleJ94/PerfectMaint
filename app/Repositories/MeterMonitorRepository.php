@@ -19,9 +19,11 @@ final class MeterMonitorRepository extends Repository
 
         return $this->db->fetchAll(
             "SELECT e.id, e.code, e.name, e.brand, e.model, e.status, e.hour_meter, e.odometer_km, s.name AS site,
+                    COALESCE(e.meter_basis, c.meter_basis, 'hours') AS meter_basis,
                     (SELECT MAX(r.recorded_at) FROM meter_readings r
                       WHERE r.equipment_id = e.id AND (r.hour_meter IS NOT NULL OR r.odometer_km IS NOT NULL)) AS last_reading_at
                FROM equipment e JOIN sites s ON s.id = e.site_id
+               LEFT JOIN equipment_categories c ON c.id = e.category_id
               WHERE $scopeSql AND e.is_archived = 0 $siteSql
               ORDER BY e.code",
             $params

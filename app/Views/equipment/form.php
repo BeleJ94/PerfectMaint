@@ -67,6 +67,11 @@ $fieldError = static fn (string $name) => field_error($name) ? '<span class="err
     <fieldset class="form-section">
         <legend><i data-lucide="gauge"></i><?= e(t('equipment.section_meters')) ?></legend>
         <div class="form-grid">
+            <?= $f('meter_basis', 'select', [
+                'value' => old('meter_basis', $item['meter_basis_override'] ?? null),
+                'options' => ['' => t('equipment.meter_basis_category'), 'hours' => t('meter_basis.hours'), 'km' => t('meter_basis.km')],
+                'hint' => t('equipment.meter_basis_hint'),
+            ]) ?>
             <?= $f('hour_meter', 'number', ['attrs' => ['min' => 0, 'step' => 1, 'inputmode' => 'numeric'], 'hint' => $id ? t('equipment.meter_hint') : null]) ?>
             <?php if (!$id): ?>
                 <?= $f('odometer_km', 'number', ['attrs' => ['min' => 0, 'step' => 1, 'inputmode' => 'numeric']]) ?>

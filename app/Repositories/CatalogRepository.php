@@ -14,14 +14,19 @@ final class CatalogRepository extends Repository
     public function categories(?int $includeId = null): array
     {
         return $this->db->fetchAll(
-            'SELECT id, code, name, family FROM equipment_categories WHERE is_active = 1 OR id = :inc ORDER BY family, name',
+            'SELECT id, code, name, family, meter_basis FROM equipment_categories WHERE is_active = 1 OR id = :inc ORDER BY family, name',
             ['inc' => $includeId ?? 0]
         );
     }
 
     public function findCategory(int $id): ?array
     {
-        return $this->db->fetchOne('SELECT id, code, name, family FROM equipment_categories WHERE id = :id', ['id' => $id]);
+        return $this->db->fetchOne('SELECT id, code, name, family, meter_basis FROM equipment_categories WHERE id = :id', ['id' => $id]);
+    }
+
+    public function updateCategoryMeterBasis(int $id, string $basis): void
+    {
+        $this->db->execute('UPDATE equipment_categories SET meter_basis = :b WHERE id = :id', ['b' => $basis, 'id' => $id]);
     }
 
     /** Marques avec nombre de modèles et d'engins (tous sites). */

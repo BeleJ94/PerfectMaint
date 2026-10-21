@@ -21,7 +21,8 @@ final class EquipmentRepository extends Repository
     private const COLUMNS = 'e.id, e.site_id, e.category_id, e.brand_id, e.model_id, e.code, e.name, e.brand, e.model, e.serial_number,
         e.chassis_number, e.plate_number, e.commissioned_at, e.hour_meter, e.odometer_km, e.fuel_level, e.meter_updated_at,
         e.ownership, e.contract_ref, e.contract_party, e.contract_start, e.contract_end, e.assignment, e.status, e.status_changed_at, e.notes, e.is_archived,
-        e.created_at, e.updated_at, s.name AS site, s.code AS site_code, s.activity AS site_activity, c.name AS category, c.family AS category_family';
+        e.created_at, e.updated_at, s.name AS site, s.code AS site_code, s.activity AS site_activity, c.name AS category, c.family AS category_family,
+        e.meter_basis AS meter_basis_override, COALESCE(e.meter_basis, c.meter_basis, \'hours\') AS meter_basis';
 
     private const FROM = 'equipment e
         JOIN sites s ON s.id = e.site_id
@@ -119,10 +120,10 @@ final class EquipmentRepository extends Repository
 
         return $this->db->insert(
             'INSERT INTO equipment (site_id, category_id, brand_id, model_id, code, name, brand, model, serial_number, chassis_number,
-                                    plate_number, commissioned_at, hour_meter, odometer_km, ownership, contract_ref, contract_party,
+                                    plate_number, commissioned_at, hour_meter, odometer_km, meter_basis, ownership, contract_ref, contract_party,
                                     contract_start, contract_end, assignment, status, notes)
              VALUES (:site_id, :category_id, :brand_id, :model_id, :code, :name, :brand, :model, :serial_number, :chassis_number,
-                     :plate_number, :commissioned_at, :hour_meter, :odometer_km, :ownership, :contract_ref, :contract_party,
+                     :plate_number, :commissioned_at, :hour_meter, :odometer_km, :meter_basis, :ownership, :contract_ref, :contract_party,
                      :contract_start, :contract_end, :assignment, :status, :notes)',
             self::params($data) + ['status' => $data['status'] ?? 'available', 'odometer_km' => $data['odometer_km'] ?? null]
         );
@@ -135,7 +136,7 @@ final class EquipmentRepository extends Repository
         $this->db->execute(
             "UPDATE equipment SET site_id = :site_id, category_id = :category_id, brand_id = :brand_id, model_id = :model_id, code = :code, name = :name,
                     brand = :brand, model = :model, serial_number = :serial_number, chassis_number = :chassis_number,
-                    plate_number = :plate_number, commissioned_at = :commissioned_at, hour_meter = :hour_meter,
+                    plate_number = :plate_number, commissioned_at = :commissioned_at, hour_meter = :hour_meter, meter_basis = :meter_basis,
                     ownership = :ownership, contract_ref = :contract_ref, contract_party = :contract_party,
                     contract_start = :contract_start, contract_end = :contract_end, assignment = :assignment, notes = :notes
               WHERE id = :id AND $scopeSql",
@@ -334,6 +335,7 @@ final class EquipmentRepository extends Repository
             'assignment' => $data['assignment'] ?? null,
             'commissioned_at' => $data['commissioned_at'] ?? null,
             'hour_meter' => $data['hour_meter'] ?? null,
+            'meter_basis' => $data['meter_basis'] ?? null,
             'notes' => $data['notes'] ?? null,
         ];
     }

@@ -69,4 +69,14 @@ final class CatalogController extends Controller
 
         return $this->redirect('/catalog', t('flash.updated'));
     }
+
+    public function updateCategory(Request $request, array $params): Response
+    {
+        $this->service->updateCategory($this->id($params), $request->body);
+        if ($request->wantsJson()) {
+            return $this->json(['ok' => true, 'message' => t('flash.updated')]);
+        }
+
+        return $this->redirect('/catalog', t('flash.updated'));
+    }
 }

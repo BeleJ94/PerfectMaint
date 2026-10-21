@@ -83,3 +83,31 @@ $activeBrands = array_values(array_filter($brands, static fn (array $b) => (int)
         </div>
     </section>
 </div>
+
+<section class="card">
+    <div class="card__title"><h2><?= e(t('catalog.categories')) ?></h2></div>
+    <p class="muted small"><?= e(t('catalog.categories_hint')) ?></p>
+    <div class="table-wrap">
+        <table class="table table--compact" data-no-dt>
+            <thead><tr><th><?= e(t('fields.category_id')) ?></th><th><?= e(t('fields.meter_basis')) ?></th></tr></thead>
+            <tbody>
+            <?php foreach ($categories as $category): ?>
+                <tr>
+                    <td><strong><?= e($category['name']) ?></strong></td>
+                    <td>
+                        <form method="post" action="<?= e(url('/catalog/categories/' . $category['id'])) ?>" class="inline-add">
+                            <?= csrf_field() ?>
+                            <select name="meter_basis" class="input input--sm" aria-label="<?= e(t('fields.meter_basis')) ?>">
+                                <?php foreach (['hours', 'km'] as $basis): ?>
+                                    <option value="<?= e($basis) ?>"<?= $category['meter_basis'] === $basis ? ' selected' : '' ?>><?= e(t('meter_basis.' . $basis)) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn--sm"><i data-lucide="save"></i><?= e(t('common.save')) ?></button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</section>

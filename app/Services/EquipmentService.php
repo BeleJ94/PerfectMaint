@@ -49,6 +49,7 @@ final class EquipmentService
             'assignment' => 'string|max:150',
             'commissioned_at' => 'date',
             'hour_meter' => 'int|min:0|max:999999',
+            'meter_basis' => 'in:hours,km',
             'notes' => 'string|max:5000',
         ];
     }

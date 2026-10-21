@@ -181,8 +181,10 @@ final class MeterEntryService
         $today = date('Y-m-d');
         $row['read_today'] = $row['last_at'] !== null && str_starts_with((string) $row['last_at'], $today);
         $row['own'] = $row['read_today'] && $row['last_by'] !== null && (int) $row['last_by'] === $this->auth->user()?->id;
-        // Le kilométrage n'est demandé que pour les engins qui ont un compteur kilométrique (ou pas de compteur horaire).
-        $row['has_km'] = $row['odometer_km'] !== null || $row['hour_meter'] === null;
+        // Compteur de suivi en premier ; l'autre compteur n'est proposé que s'il est déjà relevé sur l'engin.
+        $row['km_first'] = ($row['meter_basis'] ?? 'hours') === 'km';
+        $row['has_hours'] = !$row['km_first'] || $row['hour_meter'] !== null;
+        $row['has_km'] = $row['km_first'] || $row['odometer_km'] !== null;
         $row['label'] = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: $row['name'];
 
         return $row;

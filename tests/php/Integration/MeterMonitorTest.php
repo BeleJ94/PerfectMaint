@@ -91,7 +91,12 @@ final class MeterMonitorTest extends DatabaseTestCase
     public function testKilometrePlansAreProjectedOnTheOdometer(): void
     {
         $bus = $this->createEquipment($this->kamao, 'BUS-01', 'available');
-        $this->db->execute('UPDATE equipment SET hour_meter = NULL, odometer_km = 59200 WHERE id = :id', ['id' => $bus]);
+        // Catégorie « Bus » : suivie au kilométrage par défaut (migration 0020).
+        $this->db->execute(
+            "UPDATE equipment SET hour_meter = NULL, odometer_km = 59200,
+                    category_id = (SELECT id FROM equipment_categories WHERE code = 'BUS') WHERE id = :id",
+            ['id' => $bus]
+        );
         for ($i = 10; $i >= 0; $i--) {
             $this->db->execute(
                 'INSERT INTO meter_readings (equipment_id, odometer_km, recorded_at) VALUES (:e, :km, :at)',
@@ -106,6 +111,10 @@ final class MeterMonitorTest extends DatabaseTestCase
         self::assertSame(['odometer_km', 'km', 59200, 200.0], [$row['metric'], $row['unit'], $row['current'], $row['rate']]);
         $plan = $row['plans'][0];
         self::assertSame([60000, 'km', 800, 92, 4, 'soon'], [$plan['next_due'], $plan['unit'], $plan['remaining'], $plan['pct'], $plan['days_left'], $plan['status']]);
+
+        // Forçage sur l'engin : prime sur la catégorie.
+        $this->db->execute("UPDATE equipment SET meter_basis = 'hours' WHERE id = :id", ['id' => $bus]);
+        self::assertSame('hour_meter', $this->service($this->manager, MeterMonitorService::class)->overview()['rows'][0]['metric']);
     }
 
     public function testPagesAndFeeds(): void

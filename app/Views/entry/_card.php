@@ -9,6 +9,9 @@ if ($row['hour_meter'] !== null) {
 if ($row['odometer_km'] !== null) {
     $index[] = format_number($row['odometer_km']) . ' km';
 }
+if ($row['km_first']) {
+    $index = array_reverse($index); // compteur de suivi en premier
+}
 $when = $row['last_at'] === null
     ? t('entry.never')
     : ($done ? t('entry.today_at', ['time' => date('H:i', strtotime($row['last_at']))]) : format_date($row['last_at'], true));
@@ -48,12 +51,18 @@ $number = static function (string $name, string $label, ?int $current, bool $pre
     <form method="post" action="<?= e(url('/saisie/' . $id)) ?>" class="entry-card__form" data-entry-form<?= $done ? ' hidden' : '' ?>>
         <?= csrf_field() ?>
         <div class="entry-card__fields">
-            <?php if ($row['hour_meter'] !== null || $row['odometer_km'] === null): /* masqué pour un véhicule suivi au seul kilométrage */ ?>
-                <?= $number('hour_meter', t('entry.hours'), $row['hour_meter'] !== null ? (int) $row['hour_meter'] : null, $own) ?>
-            <?php endif; ?>
-            <?php if ($row['has_km']): ?>
-                <?= $number('odometer_km', t('entry.km'), $row['odometer_km'] !== null ? (int) $row['odometer_km'] : null, $own) ?>
-            <?php endif; ?>
+            <?php
+            // Compteur de suivi de l'engin (catégorie ou forçage) en premier : km pour les véhicules, heures pour les engins.
+            $fields = [];
+            if ($row['has_hours']) {
+                $fields[] = $number('hour_meter', t('entry.hours'), $row['hour_meter'] !== null ? (int) $row['hour_meter'] : null, $own);
+            }
+            if ($row['has_km']) {
+                $km = $number('odometer_km', t('entry.km'), $row['odometer_km'] !== null ? (int) $row['odometer_km'] : null, $own);
+                $row['km_first'] ? array_unshift($fields, $km) : $fields[] = $km;
+            }
+            echo implode('', $fields);
+            ?>
             <?= $number('fuel_level', t('entry.fuel'), $row['fuel_level'] !== null ? (int) $row['fuel_level'] : null, false, ['min' => 0, 'max' => 100, 'placeholder' => t('entry.optional')]) ?>
         </div>
         <p class="entry-card__error" data-entry-error role="alert" hidden></p>
