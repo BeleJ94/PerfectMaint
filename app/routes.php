@@ -99,6 +99,9 @@ return static function (Router $r): void {
     // Saisie des index par les encodeurs (téléphone / tablette)
     $r->get('/saisie', [MeterEntryController::class, 'index'], ['permission' => 'meters.entry']);
     $r->get('/saisie/rapport', [MeterEntryController::class, 'report'], ['permission' => 'meters.entry']);
+    $r->get('/saisie/supervision', [MeterEntryController::class, 'supervision'], ['permission' => 'meters.entry']);
+    $r->get('/saisie/supervision/data', [MeterEntryController::class, 'supervisionData'], ['permission' => 'meters.entry']);
+    $r->get('/saisie/supervision/{id}/series', [MeterEntryController::class, 'supervisionSeries'], ['permission' => 'meters.entry']);
     $r->post('/saisie/{id}', [MeterEntryController::class, 'save'], ['permission' => 'meters.entry']);
 
     // Pièces détachées

@@ -6,11 +6,16 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Domain\MeterForecast;
 use App\Repositories\SiteRepository;
 use App\Services\MeterEntryService;
+use App\Services\MeterMonitorService;
 use DateTimeImmutable;
 
-/** Écrans de l'encodeur : saisie des index du jour et rapport de saisie d'une journée (lecture seule). */
+/**
+ * Écrans de l'encodeur : saisie des index du jour, rapport de saisie d'une journée (lecture seule)
+ * et supervision des index de ses sites (échéances, relevés manquants, évolution).
+ */
 final class MeterEntryController extends Controller
 {
     /** Site de travail de l'encodeur, mémorisé pour la session (0 = tous ses sites). */
@@ -20,8 +25,37 @@ final class MeterEntryController extends Controller
         ControllerContext $ctx,
         private readonly MeterEntryService $entries,
         private readonly SiteRepository $sites,
+        private readonly MeterMonitorService $monitor,
     ) {
         parent::__construct($ctx);
+    }
+
+    /** Supervision des index sur le site de travail : la même lecture que l'écran mural, adaptée au téléphone. */
+    public function supervision(Request $request): Response
+    {
+        $sites = $this->sites->listActive();
+        $siteId = $this->workSite($request, $sites);
+
+        return $this->render('entry/supervision', [
+            'title' => t('entry.tab_supervision'),
+            'sites' => $sites,
+            'siteId' => $siteId,
+            'overview' => $this->monitor->overview($siteId),
+            'rules' => ['pct' => (int) (MeterForecast::ALERT_RATIO * 100), 'days' => MeterForecast::ALERT_DAYS,
+                'stale' => MeterForecast::STALE_DAYS, 'window' => MeterForecast::WINDOW_DAYS],
+        ], 200, 'layouts/entry');
+    }
+
+    public function supervisionData(Request $request): Response
+    {
+        return $this->json($this->monitor->overview($this->workSite($request, $this->sites->listActive())));
+    }
+
+    public function supervisionSeries(Request $request, array $params): Response
+    {
+        $days = in_array($request->int('days'), MeterMonitorService::PERIODS, true) ? (int) $request->int('days') : MeterMonitorService::PERIODS[0];
+
+        return $this->json($this->monitor->detail($this->id($params), $days));
     }
 
     public function index(Request $request): Response

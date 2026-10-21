@@ -63,6 +63,21 @@ final class MeterEntryTest extends DatabaseTestCase
         self::assertSame(403, $this->http($this->session, 'POST', "/equipment/{$this->equipment}/readings", self::CSRF + ['hour_meter' => '1001'], self::AJAX)->status);
     }
 
+    public function testEncoderSupervisionTabIsLimitedToTheirSites(): void
+    {
+        $other = $this->createEquipment($this->metalkol, 'MET-01');
+        $page = $this->http($this->session, 'GET', '/saisie/supervision');
+        self::assertSame(200, $page->status);
+        self::assertStringContainsString('id="sup-data"', $page->body);
+        self::assertStringContainsString('/saisie/supervision', $page->body, 'Onglet dans la navigation de l\'encodeur');
+
+        $data = json_decode($this->http($this->session, 'GET', '/saisie/supervision/data', [], self::AJAX)->body, true);
+        self::assertSame(['KAM-01'], array_column($data['rows'], 'code'), 'Engins de ses sites uniquement');
+        $series = json_decode($this->http($this->session, 'GET', "/saisie/supervision/{$this->equipment}/series?days=90", [], self::AJAX)->body, true);
+        self::assertSame([90, 1], [$series['days'], count($series['series'])]);
+        self::assertSame(404, $this->http($this->session, 'GET', "/saisie/supervision/$other/series", [], self::AJAX)->status, 'Engin hors périmètre');
+    }
+
     public function testWorkSiteIsShownAndCanBeSwitched(): void
     {
         $single = $this->http($this->session, 'GET', '/saisie')->body;

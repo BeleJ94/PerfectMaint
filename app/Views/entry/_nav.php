@@ -1,7 +1,7 @@
 <?php
 /**
  * En-tête des écrans de l'encodeur : site de travail (avec changement s'il en a plusieurs) et onglets.
- * @var array $sites sites du périmètre  @var int|null $siteId  @var string $tab entry|report  @var array $query paramètres à conserver
+ * @var array $sites sites du périmètre  @var int|null $siteId  @var string $tab entry|report|supervision  @var array $query paramètres à conserver
  */
 $query ??= [];
 $current = null;
@@ -10,7 +10,7 @@ foreach ($sites as $site) {
         $current = $site;
     }
 }
-$path = $tab === 'report' ? '/saisie/rapport' : '/saisie';
+$path = ['report' => '/saisie/rapport', 'supervision' => '/saisie/supervision'][$tab] ?? '/saisie';
 ?>
 <div class="entry-site">
     <span class="entry-site__icon"><i data-lucide="map-pin"></i></span>
@@ -37,4 +37,5 @@ $path = $tab === 'report' ? '/saisie/rapport' : '/saisie';
 <nav class="entry-tabs" aria-label="<?= e(t('nav.meter_entry')) ?>">
     <a href="<?= e(url('/saisie')) ?>"<?= $tab === 'entry' ? ' aria-current="page"' : '' ?>><i data-lucide="pencil"></i><?= e(t('entry.tab_entry')) ?></a>
     <a href="<?= e(url('/saisie/rapport')) ?>"<?= $tab === 'report' ? ' aria-current="page"' : '' ?>><i data-lucide="clipboard-list"></i><?= e(t('entry.report')) ?></a>
+    <a href="<?= e(url('/saisie/supervision')) ?>"<?= $tab === 'supervision' ? ' aria-current="page"' : '' ?>><i data-lucide="activity"></i><?= e(t('entry.tab_supervision')) ?></a>
 </nav>
