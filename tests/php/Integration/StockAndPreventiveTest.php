@@ -171,6 +171,8 @@ final class StockAndPreventiveTest extends DatabaseTestCase
 
         $create = $this->http($session, 'GET', "/preventive/create?equipment_id=$equipment");
         self::assertSame(200, $create->status);
+        $search = json_decode($this->http($session, 'GET', '/equipment/search?q=CH-0', [], ['X-Requested-With' => 'XMLHttpRequest'])->body, true);
+        self::assertSame(['CH-06', 'hours', 800], [$search['results'][0]['code'], $search['results'][0]['meter_basis'], (int) $search['results'][0]['hour_meter']], 'Recherche du sélecteur d\'engin');
         self::assertStringContainsString('data-preventive-preview', $create->body);
         self::assertMatchesRegularExpression('/value="800"[^>]*name="last_done_hours"|name="last_done_hours"[^>]*value="800"/', $create->body, 'Point de départ proposé : index actuel');
 

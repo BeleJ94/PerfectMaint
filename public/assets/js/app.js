@@ -618,8 +618,11 @@
       var q = $input.val().trim();
       if (q.length < 1) { $results.empty(); return; }
       timer = setTimeout(function () {
+        // On garde la requête jqXHR elle-même (abort), pas la promesse renvoyée par .then() qui n'en a pas :
+        // sinon la deuxième frappe levait une erreur et la recherche restait figée.
         if (request) request.abort();
-        request = $.getJSON($picker.data('search-url'), { q: q }).then(function (json) {
+        request = $.getJSON($picker.data('search-url'), { q: q });
+        request.done(function (json) {
           $results.empty();
           if (!json.results.length) {
             $results.append($('<li>').append($('<button type="button" disabled>').text(t('js.no_result'))));
