@@ -28,11 +28,14 @@ final class MeterEntryRepository extends Repository
         return $this->db->fetchAll(
             "SELECT e.id, e.code, e.name, e.brand, e.model, e.status, e.hour_meter, e.odometer_km, e.fuel_level, s.name AS site,
                     COALESCE(e.meter_basis, c.meter_basis, 'hours') AS meter_basis,
+                    g.kind AS fuel_kind, g.marks AS fuel_marks, COALESCE(e.tank_capacity_l, em.tank_capacity_l) AS tank_capacity, e.fuel_liters,
                     lr.id AS last_id, lr.recorded_at AS last_at, lr.recorded_by AS last_by, lr.hour_meter AS last_hours,
-                    lr.odometer_km AS last_km, CONCAT(u.first_name, ' ', u.last_name) AS last_by_name
+                    lr.odometer_km AS last_km, lr.fuel_mark AS last_fuel_mark, CONCAT(u.first_name, ' ', u.last_name) AS last_by_name
                FROM equipment e
                JOIN sites s ON s.id = e.site_id
                LEFT JOIN equipment_categories c ON c.id = e.category_id
+               LEFT JOIN equipment_models em ON em.id = e.model_id
+               LEFT JOIN fuel_gauges g ON g.id = COALESCE(e.fuel_gauge_id, em.fuel_gauge_id)
                LEFT JOIN meter_readings lr ON lr.id = (
                     SELECT r.id FROM meter_readings r
                      WHERE r.equipment_id = e.id AND (r.hour_meter IS NOT NULL OR r.odometer_km IS NOT NULL)

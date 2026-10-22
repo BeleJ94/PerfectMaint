@@ -88,6 +88,30 @@ final class MiningCatalogTest extends DatabaseTestCase
         self::assertNotContains('Liebherr', array_column($this->service($this->manager, CatalogRepository::class)->brands(true), 'name'));
     }
 
+    public function testFuelGaugesAndModelTankAreManagedInTheCatalog(): void
+    {
+        $catalog = $this->service($this->manager, CatalogService::class);
+        $gauge = $catalog->createGauge(['name' => 'Aiguille 4 tirets', 'kind' => 'marks', 'marks' => '4']);
+        try {
+            $catalog->createGauge(['name' => 'Barres', 'kind' => 'marks', 'marks' => '']);
+            self::fail('Indicateur à graduations sans nombre de graduations accepté');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('marks', $e->errors);
+        }
+        $digital = $catalog->createGauge(['name' => 'Numérique', 'kind' => 'percent', 'marks' => '8']);
+        self::assertNull($this->value('SELECT marks FROM fuel_gauges WHERE id = :id', ['id' => $digital]), 'Pas de graduations pour un affichage en %');
+
+        $brand = $catalog->createBrand(['name' => 'Toyota (essai carburant)']);
+        $model = $catalog->createModel(['brand_id' => $brand, 'name' => 'Hilux', 'category_id' => '']);
+        $catalog->setModelFuel($model['id'], ['fuel_gauge_id' => (string) $gauge, 'tank_capacity_l' => '80']);
+        self::assertSame([$gauge, 80], array_map('intval', array_values($this->row('SELECT fuel_gauge_id, tank_capacity_l FROM equipment_models WHERE id = :id', ['id' => $model['id']]))));
+
+        $equipment = $this->createEquipment($this->kamao, 'KAM-HLX');
+        $this->db->execute('UPDATE equipment SET model_id = :m WHERE id = :id', ['m' => $model['id'], 'id' => $equipment]);
+        $fuel = $this->service($this->manager, \App\Repositories\FuelGaugeRepository::class)->forEquipment($equipment);
+        self::assertSame(['marks', 4, 80, 'model'], [$fuel['kind'], $fuel['marks'], $fuel['capacity'], $fuel['source']]);
+    }
+
     public function testSiteWindowIsScopedAndListsTheFleet(): void
     {
         $this->createEquipment($this->kamao, 'KAM-01', 'breakdown');

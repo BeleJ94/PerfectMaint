@@ -17,6 +17,7 @@ use App\Repositories\CatalogRepository;
 use App\Repositories\EquipmentDocumentRepository;
 use App\Repositories\EquipmentPhotoRepository;
 use App\Repositories\FluidRepository;
+use App\Repositories\FuelGaugeRepository;
 use App\Repositories\PartRepository;
 use App\Services\FluidService;
 use App\Repositories\EquipmentRepository;
@@ -49,6 +50,7 @@ final class EquipmentController extends Controller
         private readonly FluidService $fluidService,
         private readonly EquipmentDocumentRepository $documents,
         private readonly EquipmentDocumentService $documentService,
+        private readonly FuelGaugeRepository $gauges,
     ) {
         parent::__construct($ctx);
     }
@@ -96,7 +98,8 @@ final class EquipmentController extends Controller
             'statuses' => EquipmentStatus::cases(),
             'history' => $this->equipment->statusHistory((int) $item['id']),
             'photos' => $this->photos->forEquipment((int) $item['id']),
-            'readings' => $this->equipment->readings((int) $item['id']),
+            'readings' => $this->equipment->readings((int) $item['id'], 1000), // tableau paginé côté navigateur
+            'fuelGauge' => $this->gauges->forEquipment((int) $item['id']),
             'assignments' => $this->assignments->current((int) $item['id']),
             'compatibleParts' => $item['model_id'] !== null ? $this->parts->forModel((int) $item['model_id'], (int) $item['site_id']) : [],
             'documents' => $this->documents->forEquipment((int) $item['id']),
@@ -278,6 +281,7 @@ final class EquipmentController extends Controller
             'categories' => $this->catalog->categories(isset($item['category_id']) ? (int) $item['category_id'] : null),
             'brands' => $this->catalog->brands(true),
             'models' => $this->catalog->models(true, isset($item['model_id']) ? (int) $item['model_id'] : null),
+            'gauges' => $this->gauges->all(),
         ]);
     }
 }

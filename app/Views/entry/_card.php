@@ -12,6 +12,12 @@ if ($row['odometer_km'] !== null) {
 if ($row['km_first']) {
     $index = array_reverse($index); // compteur de suivi en premier
 }
+if ($row['fuel_liters'] !== null) {
+    $liters = (float) $row['fuel_liters'];
+    $index[] = format_number($liters, fmod($liters, 1.0) === 0.0 ? 0 : 1) . ' L';
+} elseif ($row['fuel_level'] !== null) {
+    $index[] = $row['fuel_level'] . ' %';
+}
 $when = $row['last_at'] === null
     ? t('entry.never')
     : ($done ? t('entry.today_at', ['time' => date('H:i', strtotime($row['last_at']))]) : format_date($row['last_at'], true));
@@ -63,7 +69,24 @@ $number = static function (string $name, string $label, ?int $current, bool $pre
             }
             echo implode('', $fields);
             ?>
-            <?= $number('fuel_level', t('entry.fuel'), $row['fuel_level'] !== null ? (int) $row['fuel_level'] : null, false, ['min' => 0, 'max' => 100, 'placeholder' => t('entry.optional')]) ?>
+            <?php
+            // Carburant lu sur l'indicateur : graduation atteinte par l'aiguille (demi-graduation acceptée), convertie en litres.
+            $marks = $row['fuel_kind'] === 'marks' && $row['fuel_marks'] ? (int) $row['fuel_marks'] : null;
+            $capacity = $row['tank_capacity'] !== null ? (int) $row['tank_capacity'] : null;
+            $fuelId = 'entry-fuel-' . $id;
+            ?>
+            <label class="entry-field entry-field--fuel" data-fuel-field data-marks="<?= e($marks) ?>" data-capacity="<?= e($capacity) ?>">
+                <span><?= e($marks ? t('entry.fuel_marks', ['n' => $marks]) : t('entry.fuel_percent')) ?></span>
+                <?php if ($marks): ?>
+                    <input type="number" name="fuel_mark" id="<?= e($fuelId) ?>" class="input" inputmode="decimal" step="0.5" min="0" max="<?= e($marks) ?>"
+                           autocomplete="off" placeholder="<?= e(t('entry.fuel_marks_placeholder', ['n' => $marks])) ?>"
+                           value="<?= e($own && $row['last_fuel_mark'] !== null ? (float) $row['last_fuel_mark'] : '') ?>">
+                <?php else: ?>
+                    <input type="number" name="fuel_level" id="<?= e($fuelId) ?>" class="input" inputmode="numeric" step="1" min="0" max="100"
+                           autocomplete="off" placeholder="<?= e(t('entry.optional')) ?>">
+                <?php endif; ?>
+                <small class="entry-fuel__preview" data-fuel-preview aria-live="polite"><?= e($marks ? t('entry.fuel_marks_hint', ['n' => $marks]) : t('entry.fuel_no_gauge')) ?></small>
+            </label>
         </div>
         <p class="entry-card__error" data-entry-error role="alert" hidden></p>
         <button type="submit" class="btn btn--primary btn--block"><i data-lucide="check"></i><?= e(t($own ? 'entry.save_correction' : 'common.save')) ?></button>

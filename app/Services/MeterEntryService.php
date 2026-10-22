@@ -137,9 +137,11 @@ final class MeterEntryService
                     throw Validator::fail($counter, 'meter_decrease', ['current' => format_number($base[$counter])]);
                 }
             }
-            $this->entries->updateReading((int) $own['id'], $hours, $km, $data['fuel_level'], $data['note']);
+            $fuel = $this->meters->fuel($equipmentId, $data);
+            $this->entries->updateReading((int) $own['id'], $hours, $km, $fuel['fuel_level'] ?? null, $data['note']);
             $this->entries->setMeters($equipmentId, $hours ?? ($row['hour_meter'] !== null ? (int) $row['hour_meter'] : null),
-                $km ?? ($row['odometer_km'] !== null ? (int) $row['odometer_km'] : null), $data['fuel_level']);
+                $km ?? ($row['odometer_km'] !== null ? (int) $row['odometer_km'] : null), $fuel['fuel_level'] ?? null);
+            $this->meters->storeFuel((int) $own['id'], $equipmentId, $fuel);
             $this->logger->log(
                 'reading', 'equipment', $equipmentId, (int) $row['site_id'],
                 ['hour_meter' => $row['hour_meter'], 'odometer_km' => $row['odometer_km']],
@@ -155,6 +157,7 @@ final class MeterEntryService
             'hour_meter' => 'int|min:0|max:999999',
             'odometer_km' => 'int|min:0|max:9999999',
             'fuel_level' => 'int|min:0|max:100',
+            'fuel_mark' => 'numeric|min:0|max:20',
             'note' => 'string|max:255',
         ]);
     }

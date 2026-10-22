@@ -143,6 +143,43 @@ final class MeterEntryTest extends DatabaseTestCase
         self::assertSame(404, $this->post($this->createEquipment($this->metalkol, 'MET-01'), ['hour_meter' => '200'])[0], 'Hors périmètre');
     }
 
+    /** Carburant lu sur l'indicateur : « 2 » sur un indicateur à 4 tirets, réservoir de 80 L = 40 L (50 %). */
+    public function testFuelMarkIsConvertedWithTheModelGauge(): void
+    {
+        $brand = $this->db->insert("INSERT INTO equipment_brands (name) VALUES ('Toyota Test')");
+        $gauge = $this->db->insert("INSERT INTO fuel_gauges (name, kind, marks) VALUES ('Aiguille 4 tirets (test)', 'marks', 4)");
+        $model = $this->db->insert(
+            "INSERT INTO equipment_models (brand_id, name, fuel_gauge_id, tank_capacity_l) VALUES (:b, 'Land Cruiser', :g, 80)",
+            ['b' => $brand, 'g' => $gauge]
+        );
+        $this->db->execute('UPDATE equipment SET model_id = :m WHERE id = :id', ['m' => $model, 'id' => $this->equipment]);
+
+        $page = $this->http($this->session, 'GET', '/saisie');
+        self::assertStringContainsString('name="fuel_mark"', $page->body, 'Saisie par graduation');
+
+        [$status] = $this->post($this->equipment, ['hour_meter' => '1010', 'fuel_mark' => '2']);
+        self::assertSame(200, $status);
+        $reading = $this->row('SELECT fuel_level, fuel_mark, fuel_marks, fuel_liters FROM meter_readings ORDER BY id DESC LIMIT 1');
+        self::assertSame([50, 2.0, 4, 40.0], [(int) $reading['fuel_level'], (float) $reading['fuel_mark'], (int) $reading['fuel_marks'], (float) $reading['fuel_liters']]);
+        self::assertSame(40.0, (float) $this->db->fetchValue('SELECT fuel_liters FROM equipment WHERE id = :id', ['id' => $this->equipment]));
+
+        // Correction de sa propre saisie : demi-graduation acceptée (1,5 / 4 de 80 L = 30 L), hors indicateur refusé.
+        $this->post($this->equipment, ['hour_meter' => '1010', 'fuel_mark' => '1,5']);
+        self::assertSame(30.0, (float) $this->db->fetchValue('SELECT fuel_liters FROM meter_readings ORDER BY id DESC LIMIT 1'));
+        self::assertSame(422, $this->post($this->equipment, ['hour_meter' => '1010', 'fuel_mark' => '4.3'])[0]);
+        self::assertSame(422, $this->post($this->equipment, ['hour_meter' => '1010', 'fuel_mark' => '5'])[0]);
+
+        // Réglage propre à l'engin : prime sur le modèle (réservoir additionnel de 130 L).
+        $this->db->execute('UPDATE equipment SET tank_capacity_l = 130 WHERE id = :id', ['id' => $this->equipment]);
+        $this->post($this->equipment, ['hour_meter' => '1010', 'fuel_mark' => '4']);
+        self::assertSame(130.0, (float) $this->db->fetchValue('SELECT fuel_liters FROM meter_readings ORDER BY id DESC LIMIT 1'));
+    }
+
+    public function testFuelMarkWithoutGaugeIsRefused(): void
+    {
+        self::assertSame(422, $this->post($this->equipment, ['hour_meter' => '1010', 'fuel_mark' => '2'])[0], 'Indicateur non configuré : saisie en %');
+    }
+
     public function testAbnormalJumpNeedsConfirmation(): void
     {
         [$status, $json] = $this->post($this->equipment, ['hour_meter' => '1100']);

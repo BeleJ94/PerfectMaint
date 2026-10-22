@@ -87,33 +87,165 @@
     window.location.replace(target);
   })();
 
-  // ---------------------------------------------------------------- Confirmations
-  $(document).on('submit', 'form[data-confirm]', function (e) {
-    var form = this;
-    if (form.dataset.confirmed === '1') return;
-    e.preventDefault();
-    Swal.fire({
-      icon: 'question',
-      text: form.dataset.confirm,
+  // ---------------------------------------------------------------- Confirmation de toute soumission
+  /*
+   * Avant d'envoyer une saisie : fenêtre sobre avec le titre de l'action et le résumé des champs renseignés
+   * (libellé → valeur affichée, pas la valeur technique). « Modifier » revient au formulaire sans rien perdre.
+   * Exclus : navigation (connexion, déconnexion, langue, site de travail), formulaires de recherche (GET),
+   * et formulaires marqués data-no-confirm. Les actions de suppression / archivage ont un bouton rouge.
+   */
+  var NO_CONFIRM = /\/(login|logout|locale|context\/site)$/;
+  var DANGER = /\/(delete|archive|end)$/;
+  var MAX_ROWS = 12;
+
+  function clean(text) { return String(text || '').replace(/\s+/g, ' ').trim(); }
+
+  /** Libellé lisible d'un champ : son <label> (premier texte), sinon aria-label, placeholder ou titre de colonne. */
+  function fieldLabel(el) {
+    if (el.type === 'radio') {
+      // Groupe de choix : libellé du champ (.label) ou du groupe (aria-label).
+      var field = el.closest('.field');
+      var group = el.closest('[role=radiogroup], [aria-label]');
+      return clean((field && field.querySelector('.label') || {}).textContent)
+        || clean(group ? group.getAttribute('aria-label') : '') || el.name;
+    }
+    var label = el.labels && el.labels[0];
+    if (label) {
+      if (el.type === 'checkbox') return clean(label.textContent) || el.name;
+      // Libellé composé (texte + champ + aide) : on garde le premier texte, sans l'aide ni l'aperçu.
+      var part = label.querySelector('span, .label');
+      var text = clean(part && !part.contains(el) ? part.textContent : label.childNodes[0] && label.childNodes[0].textContent);
+      if (text) return text;
+    }
+    return clean(el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.title || el.name);
+  }
+
+  /** Valeur affichée : texte de l'option, « Oui » pour une case cochée, noms des fichiers… */
+  function fieldValue(el) {
+    if (el.tagName === 'SELECT') {
+      return Array.prototype.filter.call(el.options, function (o) { return o.selected && o.value !== ''; }).map(function (o) { return clean(o.textContent); }).join(', ');
+    }
+    if (el.type === 'checkbox') return el.checked ? t('js.yes') : '';
+    if (el.type === 'radio') return el.checked ? clean((el.closest('label') || {}).textContent || el.value) : '';
+    if (el.type === 'file') return Array.prototype.map.call(el.files || [], function (f) { return f.name; }).join(', ');
+    if (el.type === 'password') return el.value ? '••••••' : '';
+    if (el.type === 'date' && el.value) return Core.formatDate(el.value, locale);
+    var v = clean(el.value);
+    return v.length > 140 ? v.slice(0, 137) + '…' : v;
+  }
+
+  function summaryRows(form) {
+    var rows = [];
+    Array.prototype.forEach.call(form.elements, function (el) {
+      if (!el.name || el.disabled || el.name === '_csrf' || /^(hidden|submit|button|reset)$/.test(el.type) || el.tagName === 'BUTTON' || el.tagName === 'FIELDSET') return;
+      if (el.closest('[hidden]') && !el.closest('[data-confirm-parked]')) return; // section masquée (ex. contrat d'un engin en propre)
+      var value = fieldValue(el);
+      if (value === '') return;
+      rows.push([fieldLabel(el), value]);
+    });
+    return rows;
+  }
+
+  function actionTitle(form, submitter) {
+    var text = form.dataset.confirmTitle || (submitter && clean(submitter.textContent || submitter.value || submitter.title || submitter.getAttribute('aria-label')));
+    var page = clean($('.page-header h1').first().text());
+    return text && page ? text + ' · ' + page : (text || page || t('js.confirm_title'));
+  }
+
+  /*
+   * Nature de l'action, qui fixe le libellé, la couleur et l'icône du bouton de confirmation :
+   * create (nouvel élément), save (modification), activate / deactivate (interrupteurs), danger (suppression…).
+   * Déclarable sur le formulaire (data-confirm-kind), sinon déduite de l'adresse et des champs envoyés.
+   */
+  var KINDS = {
+    create: { label: 'js.confirm_create', icon: 'plus', btn: 'btn--primary', back: 'js.confirm_back' },
+    save: { label: 'js.confirm_save', icon: 'check', btn: 'btn--primary', back: 'js.confirm_back' },
+    apply: { label: 'js.confirm_apply', icon: 'check', btn: 'btn--primary', back: 'js.confirm_cancel' },
+    activate: { label: 'js.confirm_activate', icon: 'toggle-right', btn: 'btn--success', back: 'js.confirm_cancel' },
+    deactivate: { label: 'js.confirm_deactivate', icon: 'toggle-left', btn: 'btn--warning', back: 'js.confirm_cancel' },
+    danger: { label: 'js.confirm_danger', icon: 'trash-2', btn: 'btn--danger', back: 'js.confirm_cancel' }
+  };
+  function actionKind(form) {
+    if (form.dataset.confirmKind && KINDS[form.dataset.confirmKind]) return form.dataset.confirmKind;
+    var action = (form.getAttribute('action') || '').split('?')[0];
+    if (DANGER.test(action)) return 'danger';
+    // Interrupteur (seul champ : is_active) : activation ou désactivation.
+    var active = form.querySelector('input[type=hidden][name=is_active]');
+    var visible = Array.prototype.some.call(form.elements, function (el) { return el.name && el.name !== '_csrf' && el.type !== 'hidden' && !/^(submit|button)$/.test(el.type); });
+    if (active && !visible) return active.value === '1' ? 'activate' : 'deactivate';
+    return /\/\d+(\/[a-z-]+)?$/.test(action) ? 'save' : 'create';
+  }
+
+  /**
+   * Fenêtre de confirmation : résout true (confirmé) ou false (retour au formulaire).
+   * options : { title, message, kind, danger, rows, confirmLabel }
+   */
+  function confirmSubmit(form, options) {
+    options = options || {};
+    var rows = options.rows || summaryRows(form);
+    var kind = options.kind || (options.danger ? 'danger' : (options.danger === false && actionKind(form) === 'danger' ? 'save' : actionKind(form)));
+    var k = KINDS[kind];
+    var list = rows.slice(0, MAX_ROWS).map(function (r) {
+      return '<div><dt>' + Core.escapeHtml(r[0]) + '</dt><dd>' + Core.escapeHtml(r[1]) + '</dd></div>';
+    }).join('');
+    var more = rows.length > MAX_ROWS ? '<p class="confirm-more">' + Core.escapeHtml(t('js.confirm_more', { n: rows.length - MAX_ROWS })) + '</p>' : '';
+    var message = options.message || form.dataset.confirm || '';
+    var label = options.confirmLabel || form.dataset.confirmOk || t(k.label);
+    return Swal.fire({
+      title: options.title || actionTitle(form, options.submitter),
+      html: (message ? '<p class="confirm-lead">' + Core.escapeHtml(message) + '</p>' : '')
+        + (list ? '<dl class="confirm-summary">' + list + '</dl>' + more : (message ? '' : '<p class="confirm-lead">' + Core.escapeHtml(t('js.confirm_no_fields')) + '</p>')),
+      customClass: {
+        popup: 'confirm-popup confirm-popup--' + kind,
+        actions: 'confirm-actions',
+        confirmButton: 'btn ' + k.btn,
+        cancelButton: 'btn btn--ghost confirm-back'
+      },
+      buttonsStyling: false,
       showCancelButton: true,
-      confirmButtonText: t('js.confirm'),
-      cancelButtonText: t('js.cancel'),
-      confirmButtonColor: '#1F4E79',
-      reverseButtons: true
-    }).then(function (res) {
-      if (res.isConfirmed) {
-        form.dataset.confirmed = '1';
-        form.submit();
-      }
+      confirmButtonText: '<i data-lucide="' + k.icon + '"></i>' + Core.escapeHtml(label),
+      cancelButtonText: '<i data-lucide="arrow-left"></i>' + Core.escapeHtml(t(k.back)),
+      reverseButtons: true,
+      // Action irréversible : le focus est sur « Annuler », Entrée ne supprime pas par mégarde.
+      focusConfirm: kind !== 'danger',
+      focusCancel: kind === 'danger',
+      returnFocus: false,
+      didOpen: icons
+    }).then(function (res) { return !!res.isConfirmed; });
+  }
+  window.PM.confirmSubmit = confirmSubmit;
+  window.PM.summaryRows = summaryRows;
+
+  /** Envoi après confirmation, en conservant le bouton utilisé (ex. transition d'OT choisie). */
+  function submitConfirmed(form, submitter) {
+    if (submitter && submitter.name) {
+      $('<input type="hidden">').attr('name', submitter.name).val(submitter.value).appendTo(form);
+    }
+    form.dataset.confirmed = '1';
+    $(form).trigger('pm:confirmed');
+    form.submit();
+  }
+
+  $(document).on('submit', 'form', function (e) {
+    var form = this;
+    var method = (form.getAttribute('method') || 'get').toLowerCase();
+    if (form.dataset.confirmed === '1' || method !== 'post' || form.hasAttribute('data-no-confirm')
+      || NO_CONFIRM.test((form.getAttribute('action') || '').split('?')[0])) return;
+    if ($(form).is('[data-entry-form]')) return; // saisie de l'encodeur : confirmée par entry.js avant l'envoi AJAX
+    e.preventDefault();
+    var submitter = e.originalEvent && e.originalEvent.submitter;
+    confirmSubmit(form, { submitter: submitter }).then(function (ok) {
+      if (ok) submitConfirmed(form, submitter);
+      else $(form).trigger('pm:cancelled');
     });
   });
 
   // Dialogues de saisie : le contenu vient d'un <template> contenant un formulaire.
-  $(document).on('click', '[data-open]', function () {
-    var tpl = document.querySelector(this.dataset.open);
-    if (!tpl) return;
+  // Le formulaire est mis de côté pendant la confirmation ; « Modifier » le rouvre avec les valeurs saisies.
+  var parking = $('<div data-confirm-parked hidden></div>').appendTo(document.body)[0];
+  function openFormDialog(content) {
     Swal.fire({
-      html: tpl.innerHTML,
+      html: content,
       showCancelButton: true,
       confirmButtonText: t('js.save'),
       cancelButtonText: t('js.cancel'),
@@ -128,10 +260,23 @@
       preConfirm: function () {
         var form = Swal.getHtmlContainer().querySelector('form');
         if (!form.reportValidity()) return false;
-        form.submit();
-        return true;
+        var rows = summaryRows(form);
+        var title = clean((Swal.getHtmlContainer().querySelector('.dialog-title, h2, h3') || {}).textContent);
+        parking.appendChild(form);
+        return { form: form, rows: rows, title: title };
       }
+    }).then(function (res) {
+      if (!res.isConfirmed || !res.value) return;
+      var form = res.value.form;
+      confirmSubmit(form, { rows: res.value.rows, title: res.value.title || undefined }).then(function (ok) {
+        if (ok) { submitConfirmed(form); return; }
+        openFormDialog(form);
+      });
     });
+  }
+  $(document).on('click', '[data-open]', function () {
+    var tpl = document.querySelector(this.dataset.open);
+    if (tpl) openFormDialog(tpl.innerHTML);
   });
 
   // ---------------------------------------------------------------- DataTables
@@ -674,8 +819,10 @@
   });
 
   // Ajout rapide d'un modèle sans quitter le formulaire
-  $(document).on('click', '[data-quick-model]', function () {
-    var $btn = $(this);
+  $(document).on('click', '[data-quick-model]', function () { quickModel($(this), {}); });
+
+  /** Nouveau modèle : saisie, confirmation avec résumé, puis création ; « Modifier » rouvre la saisie. */
+  function quickModel($btn, values) {
     var $form = $btn.closest('form');
     var $brand = $form.find('[data-brand-select]');
     var $model = $form.find('[data-model-select]');
@@ -688,8 +835,9 @@
     var categories = $category.find('option').map(function () {
       return '<option value="' + Core.escapeHtml(this.value) + '">' + Core.escapeHtml(this.textContent) + '</option>';
     }).get().join('');
+    var brandName = $brand.find('option:selected').text();
     Swal.fire({
-      title: t('js.new_model_for', { brand: $brand.find('option:selected').text() }),
+      title: t('js.new_model_for', { brand: brandName }),
       html: '<div class="grid" style="text-align:left">'
         + '<div class="field"><label for="qm-name">' + Core.escapeHtml(t('js.model_name')) + '</label><input id="qm-name" class="input" maxlength="80" required></div>'
         + '<div class="field"><label for="qm-cat">' + Core.escapeHtml(t('js.category')) + '</label><select id="qm-cat" class="input">' + categories + '</select></div>'
@@ -701,27 +849,36 @@
       reverseButtons: true,
       focusConfirm: false,
       didOpen: function (popup) {
-        popup.querySelector('#qm-cat').value = $category.val() || '';
+        popup.querySelector('#qm-cat').value = values.category !== undefined ? values.category : ($category.val() || '');
+        popup.querySelector('#qm-name').value = values.name || '';
         popup.querySelector('#qm-name').focus();
+        if (values.error) Swal.showValidationMessage(values.error);
       },
       preConfirm: function () {
         var name = document.getElementById('qm-name').value.trim();
         if (!name) { Swal.showValidationMessage(t('js.model_name')); return false; }
-        return $.post($btn.data('url'), { brand_id: $brand.val(), name: name, category_id: document.getElementById('qm-cat').value })
-          .then(function (json) { return json.model; })
-          .catch(function (xhr) {
-            var json = xhr && xhr.responseJSON;
-            Swal.showValidationMessage(json && json.errors ? Object.values(json.errors).join(' ') : ((json && json.error) || t('js.error_generic')));
-          });
+        var cat = document.getElementById('qm-cat');
+        return { name: name, category: cat.value, categoryLabel: cat.value ? cat.options[cat.selectedIndex].textContent : '' };
       }
     }).then(function (res) {
       if (!res.isConfirmed || !res.value) return;
-      var m = res.value;
-      $('<option>').val(m.id).text(m.name).attr({ 'data-brand': m.brand_id, 'data-category': m.category_id || '' }).appendTo($model);
-      $model.val(String(m.id)).trigger('change');
-      toast.fire({ icon: 'success', title: t('js.model_added', { name: m.name }) });
+      var v = res.value;
+      var rows = [[t('js.brand'), brandName], [t('js.model_name'), v.name]];
+      if (v.categoryLabel) rows.push([t('js.category'), v.categoryLabel]);
+      confirmSubmit($form[0], { title: t('js.new_model_for', { brand: brandName }), rows: rows, kind: 'create' }).then(function (ok) {
+        if (!ok) { quickModel($btn, v); return; }
+        $.post($btn.data('url'), { brand_id: $brand.val(), name: v.name, category_id: v.category }).then(function (json) {
+          var m = json.model;
+          $('<option>').val(m.id).text(m.name).attr({ 'data-brand': m.brand_id, 'data-category': m.category_id || '' }).appendTo($model);
+          $model.val(String(m.id)).trigger('change');
+          toast.fire({ icon: 'success', title: t('js.model_added', { name: m.name }) });
+        }, function (xhr) {
+          var json = xhr && xhr.responseJSON;
+          quickModel($btn, $.extend({}, v, { error: json && json.errors ? Object.values(json.errors).join(' ') : ((json && json.error) || t('js.error_generic')) }));
+        });
+      });
     });
-  });
+  }
 
   // ---------------------------------------------------------------- Fenêtre site : filtre du parc en direct
   $('[data-fleet]').each(function () {
@@ -927,6 +1084,13 @@
   function uploadPhotos(url, files) {
     files = Array.prototype.filter.call(files, function (f) { return /^image\//.test(f.type); });
     if (!files.length) return;
+    // Confirmation : photos qui vont être ajoutées (nom, poids).
+    var rows = files.map(function (f, i) { return [t('js.photo_n', { n: i + 1 }), f.name + ' · ' + Core.formatNumber(f.size / 1048576, locale, 1) + ' Mo']; });
+    confirmSubmit(document.createElement('form'), { title: t('js.photos_confirm', { n: files.length }), rows: rows, kind: 'create', confirmLabel: t('js.photos_send') }).then(function (ok) {
+      if (ok) sendPhotos(url, files);
+    });
+  }
+  function sendPhotos(url, files) {
     Swal.fire({ title: t('js.uploading', { n: files.length }), allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
     files.reduce(function (chain, file) {
       return chain.then(function () {

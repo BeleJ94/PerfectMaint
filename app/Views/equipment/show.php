@@ -3,6 +3,7 @@
  * @var array $item  @var array $history  @var array $workOrders  @var array $plans  @var array $activity
  * @var array $photos  @var array $readings  @var \App\Domain\EquipmentStatus[] $statuses
  */
+$view->share('pageScripts', ['js/pm-fuel.js', 'js/equipment-readings.js']);
 $eqUrl = '/equipment/' . $item['id'];
 $primary = $photos[0] ?? null;
 $fuel = $item['fuel_level'] !== null ? (int) $item['fuel_level'] : null;
@@ -72,7 +73,10 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
     <div class="vital">
         <span class="vital__icon vital__icon--<?= e($fuelClass) ?>"><i data-lucide="fuel"></i></span>
         <div class="vital__grow"><div class="vital__label"><?= e(t('fields.fuel_level')) ?></div>
-        <div class="vital__value"><?= $fuel !== null ? e($fuel) . '<small> %</small>' : '—' ?></div>
+        <div class="vital__value"><?php if ($item['fuel_liters'] !== null): ?><?= e(format_number((float) $item['fuel_liters'], fmod((float) $item['fuel_liters'], 1.0) === 0.0 ? 0 : 1)) ?><small> L · <?= e($fuel) ?> %</small><?php else: ?><?= $fuel !== null ? e($fuel) . '<small> %</small>' : '—' ?><?php endif; ?></div>
+        <div class="muted small"><?= e($fuelGauge && $fuelGauge['name']
+            ? $fuelGauge['name'] . ($fuelGauge['capacity'] ? ' · ' . t('equipment.tank_l', ['n' => format_number($fuelGauge['capacity'])]) : '')
+            : t('equipment.fuel_gauge_unset')) ?></div>
         <?php if ($fuel !== null): ?><div class="meter meter--<?= e($fuelClass) ?>"><span style="width: <?= e($fuel) ?>%"></span></div><?php endif; ?></div>
     </div>
     <div class="vital">
@@ -339,19 +343,31 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
             <?php if ($readings === []): ?>
                 <p class="empty"><?= e(t('equipment.no_reading')) ?></p>
             <?php else: ?>
-                <ul class="timeline timeline--dense">
-                    <?php foreach ($readings as $r): ?>
-                        <li>
-                            <time><?= e(format_date($r['recorded_at'], true)) ?><?= $r['recorded_by'] ? ' · ' . e($r['recorded_by']) : '' ?></time>
-                            <span class="reading">
-                                <?php if ($r['hour_meter'] !== null): ?><span><i data-lucide="timer"></i><?= e(format_number($r['hour_meter'])) ?> h</span><?php endif; ?>
-                                <?php if ($r['odometer_km'] !== null): ?><span><i data-lucide="route"></i><?= e(format_number($r['odometer_km'])) ?> km</span><?php endif; ?>
-                                <?php if ($r['fuel_level'] !== null): ?><span><i data-lucide="fuel"></i><?= e($r['fuel_level']) ?> %</span><?php endif; ?>
-                            </span>
-                            <?php if ($r['note']): ?><div class="muted"><?= e($r['note']) ?></div><?php endif; ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
+                <?php /* Tableau compact (5 lignes par page), ligne dépliable pour le détail : rendu par js/equipment-readings.js. */ ?>
+                <div class="table-wrap">
+                    <table class="display compact readings-table" style="width:100%" data-readings-table data-no-dt>
+                        <thead><tr>
+                            <th aria-label="<?= e(t('js.readings.details')) ?>"></th>
+                            <th><?= e(t('js.date')) ?></th>
+                            <th class="dt-right"><?= e(t($item['meter_basis'] === 'km' ? 'fields.odometer_km' : 'fields.hour_meter')) ?></th>
+                            <th class="dt-right"><?= e(t('js.readings.delta')) ?></th>
+                        </tr></thead>
+                    </table>
+                </div>
+                <script type="application/json" id="readings-data"><?= json_for_html([
+                    'basis' => $item['meter_basis'] === 'km' ? 'km' : 'hours',
+                    'readings' => array_map(static fn (array $r) => [
+                        'at' => $r['recorded_at'],
+                        'hour_meter' => $r['hour_meter'] !== null ? (int) $r['hour_meter'] : null,
+                        'odometer_km' => $r['odometer_km'] !== null ? (int) $r['odometer_km'] : null,
+                        'fuel_level' => $r['fuel_level'] !== null ? (int) $r['fuel_level'] : null,
+                        'fuel_mark' => $r['fuel_mark'] !== null ? (float) $r['fuel_mark'] : null,
+                        'fuel_marks' => $r['fuel_marks'] !== null ? (int) $r['fuel_marks'] : null,
+                        'fuel_liters' => $r['fuel_liters'] !== null ? (float) $r['fuel_liters'] : null,
+                        'note' => $r['note'],
+                        'by' => $r['recorded_by'],
+                    ], $readings),
+                ]) ?></script>
             <?php endif; ?>
         </section>
 
@@ -412,10 +428,19 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
                 <input id="rd-km" name="odometer_km" type="number" class="input" min="<?= e($item['odometer_km'] ?? 0) ?>" step="1" inputmode="numeric" placeholder="<?= e($item['odometer_km'] ?? '') ?>">
             </div>
         </div>
+        <?php $gaugeMarks = $fuelGauge && $fuelGauge['kind'] === 'marks' && $fuelGauge['marks'] ? (int) $fuelGauge['marks'] : null; ?>
+        <?php if ($gaugeMarks): /* Indicateur à graduations : saisie de la graduation atteinte, convertie en litres (js/pm-fuel.js). */ ?>
+        <label class="field" data-fuel-field data-marks="<?= e($gaugeMarks) ?>" data-capacity="<?= e($fuelGauge['capacity']) ?>">
+            <span class="label"><?= e(t('entry.fuel_marks', ['n' => $gaugeMarks])) ?></span>
+            <input name="fuel_mark" type="number" class="input" step="0.5" min="0" max="<?= e($gaugeMarks) ?>" inputmode="decimal" placeholder="<?= e(t('entry.optional')) ?>">
+            <small class="entry-fuel__preview" data-fuel-preview aria-live="polite"><?= e(t('entry.fuel_marks_hint', ['n' => $gaugeMarks])) ?></small>
+        </label>
+        <?php else: ?>
         <div class="field">
             <label for="rd-fuel"><?= e(t('fields.fuel_level')) ?> <output data-range-output="#rd-fuel"><?= e($fuel !== null ? $fuel . ' %' : t('equipment.fuel_untouched')) ?></output></label>
             <input id="rd-fuel" data-name="fuel_level" type="range" min="0" max="100" step="5" value="<?= e($fuel ?? 50) ?>" class="range" data-range>
         </div>
+        <?php endif; ?>
         <div class="field">
             <label for="rd-note"><?= e(t('fields.note')) ?></label>
             <input id="rd-note" name="note" class="input" maxlength="255">

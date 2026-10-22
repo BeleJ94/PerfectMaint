@@ -1,6 +1,6 @@
 <?php
 /** @var array $sheet  @var array $sites  @var int|null $siteId */
-$view->share('pageScripts', ['js/entry.js']);
+$view->share('pageScripts', ['js/pm-fuel.js', 'js/entry.js']);
 $doneCount = count($sheet['done']);
 $total = $sheet['total'];
 ?>

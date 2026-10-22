@@ -22,7 +22,8 @@ final class EquipmentRepository extends Repository
         e.chassis_number, e.plate_number, e.commissioned_at, e.hour_meter, e.odometer_km, e.fuel_level, e.meter_updated_at,
         e.ownership, e.contract_ref, e.contract_party, e.contract_start, e.contract_end, e.assignment, e.status, e.status_changed_at, e.notes, e.is_archived,
         e.created_at, e.updated_at, s.name AS site, s.code AS site_code, s.activity AS site_activity, c.name AS category, c.family AS category_family,
-        e.meter_basis AS meter_basis_override, COALESCE(e.meter_basis, c.meter_basis, \'hours\') AS meter_basis';
+        e.meter_basis AS meter_basis_override, COALESCE(e.meter_basis, c.meter_basis, \'hours\') AS meter_basis,
+        e.fuel_gauge_id, e.tank_capacity_l, e.fuel_liters';
 
     private const FROM = 'equipment e
         JOIN sites s ON s.id = e.site_id
@@ -121,10 +122,10 @@ final class EquipmentRepository extends Repository
 
         return $this->db->insert(
             'INSERT INTO equipment (site_id, category_id, brand_id, model_id, code, name, brand, model, serial_number, chassis_number,
-                                    plate_number, commissioned_at, hour_meter, odometer_km, meter_basis, ownership, contract_ref, contract_party,
+                                    plate_number, commissioned_at, hour_meter, odometer_km, meter_basis, fuel_gauge_id, tank_capacity_l, ownership, contract_ref, contract_party,
                                     contract_start, contract_end, assignment, status, notes)
              VALUES (:site_id, :category_id, :brand_id, :model_id, :code, :name, :brand, :model, :serial_number, :chassis_number,
-                     :plate_number, :commissioned_at, :hour_meter, :odometer_km, :meter_basis, :ownership, :contract_ref, :contract_party,
+                     :plate_number, :commissioned_at, :hour_meter, :odometer_km, :meter_basis, :fuel_gauge_id, :tank_capacity_l, :ownership, :contract_ref, :contract_party,
                      :contract_start, :contract_end, :assignment, :status, :notes)',
             self::params($data) + ['status' => $data['status'] ?? 'available', 'odometer_km' => $data['odometer_km'] ?? null]
         );
@@ -138,6 +139,7 @@ final class EquipmentRepository extends Repository
             "UPDATE equipment SET site_id = :site_id, category_id = :category_id, brand_id = :brand_id, model_id = :model_id, code = :code, name = :name,
                     brand = :brand, model = :model, serial_number = :serial_number, chassis_number = :chassis_number,
                     plate_number = :plate_number, commissioned_at = :commissioned_at, hour_meter = :hour_meter, meter_basis = :meter_basis,
+                    fuel_gauge_id = :fuel_gauge_id, tank_capacity_l = :tank_capacity_l,
                     ownership = :ownership, contract_ref = :contract_ref, contract_party = :contract_party,
                     contract_start = :contract_start, contract_end = :contract_end, assignment = :assignment, notes = :notes
               WHERE id = :id AND $scopeSql",
@@ -254,7 +256,7 @@ final class EquipmentRepository extends Repository
         [$scopeSql, $params] = $this->scope->clause('e.site_id');
 
         return $this->db->fetchAll(
-            "SELECT r.id, r.hour_meter, r.odometer_km, r.fuel_level, r.note, r.recorded_at,
+            "SELECT r.id, r.hour_meter, r.odometer_km, r.fuel_level, r.fuel_mark, r.fuel_marks, r.fuel_liters, r.note, r.recorded_at,
                     CONCAT(u.first_name, ' ', u.last_name) AS recorded_by
                FROM meter_readings r
                JOIN equipment e ON e.id = r.equipment_id
@@ -337,6 +339,8 @@ final class EquipmentRepository extends Repository
             'commissioned_at' => $data['commissioned_at'] ?? null,
             'hour_meter' => $data['hour_meter'] ?? null,
             'meter_basis' => $data['meter_basis'] ?? null,
+            'fuel_gauge_id' => $data['fuel_gauge_id'] ?? null,
+            'tank_capacity_l' => $data['tank_capacity_l'] ?? null,
             'notes' => $data['notes'] ?? null,
         ];
     }

@@ -194,39 +194,58 @@
   $(document).on('click', '[data-meters-read]', function () {
     var id = Number(this.dataset.metersRead);
     var row = state.rows.filter(function (r) { return r.id === id; })[0];
-    if (!row) return;
+    if (row) openReading(row, {}, null);
+  });
+
+  /**
+   * Saisie d'un relevé : formulaire, puis confirmation avec résumé, puis envoi.
+   * « Modifier » (ou une erreur du serveur) rouvre le formulaire avec les valeurs saisies.
+   */
+  function openReading(row, values, error) {
+    var id = row.id;
     var field = function (name, label, current) {
       return '<div class="field"><label for="mr-' + name + '">' + esc(label) + '</label>'
-        + '<input id="mr-' + name + '" name="' + name + '" type="number" class="input" step="1" inputmode="numeric" min="' + (current === null ? 0 : current) + '" placeholder="' + (current === null ? '' : current) + '"></div>';
+        + '<input id="mr-' + name + '" name="' + name + '" type="number" class="input" step="1" inputmode="numeric" min="' + (current === null ? 0 : current)
+        + '" placeholder="' + (current === null ? '' : current) + '" value="' + esc(values[name] || '') + '"></div>';
     };
+    var title = t('js.meters.new_reading') + ' · ' + row.code;
     Swal.fire({
-      html: '<form class="grid" style="text-align:left"><h3 class="dialog-title"><i data-lucide="gauge"></i>' + esc(t('js.meters.new_reading')) + ' · ' + esc(row.code) + '</h3>'
+      html: '<form class="grid" style="text-align:left"><h3 class="dialog-title"><i data-lucide="gauge"></i>' + esc(title) + '</h3>'
         + '<div class="form-grid">' + field('hour_meter', t('fields.hour_meter'), row.hour_meter) + field('odometer_km', t('fields.odometer_km'), row.odometer_km) + '</div>'
-        + '<div class="field"><label for="mr-note">' + esc(t('fields.note')) + '</label><input id="mr-note" name="note" class="input" maxlength="255"></div></form>',
+        + '<div class="field"><label for="mr-note">' + esc(t('fields.note')) + '</label><input id="mr-note" name="note" class="input" maxlength="255" value="' + esc(values.note || '') + '"></div></form>',
       showCancelButton: true,
       confirmButtonText: t('js.save'),
       cancelButtonText: t('js.cancel'),
       confirmButtonColor: LINE,
       reverseButtons: true,
       focusConfirm: false,
-      showLoaderOnConfirm: true,
-      didOpen: function (popup) { icons(); popup.querySelector('input').focus(); },
+      didOpen: function (popup) {
+        icons();
+        popup.querySelector('input').focus();
+        if (error) Swal.showValidationMessage(error);
+      },
       preConfirm: function () {
         var form = Swal.getHtmlContainer().querySelector('form');
         if (!form.reportValidity()) return false;
-        return $.post(Core.fillUrl(urls.reading, { id: id }), $(form).serialize()).then(null, function (xhr) {
-          var json = xhr.responseJSON || {};
-          var message = json.errors ? Object.keys(json.errors).map(function (k) { return json.errors[k]; }).join(' ') : (json.error || t('js.error_generic'));
-          Swal.showValidationMessage(message);
-          return $.Deferred().resolve(false);
-        });
+        var data = {};
+        $(form).serializeArray().forEach(function (f) { data[f.name] = f.value; });
+        return { form: form, rows: window.PM.summaryRows(form), data: data };
       }
     }).then(function (res) {
       if (!res.isConfirmed || !res.value) return;
-      refresh();
-      if (state.selected === id) loadDetail();
+      var v = res.value;
+      window.PM.confirmSubmit(v.form, { title: title, rows: v.rows, kind: 'save', confirmLabel: t('js.entry.confirm_ok') }).then(function (ok) {
+        if (!ok) { openReading(row, v.data, null); return; }
+        $.post(Core.fillUrl(urls.reading, { id: id }), $.param(v.data)).then(function () {
+          refresh();
+          if (state.selected === id) loadDetail();
+        }, function (xhr) {
+          var json = xhr.responseJSON || {};
+          openReading(row, v.data, json.errors ? Object.keys(json.errors).map(function (k) { return json.errors[k]; }).join(' ') : (json.error || t('js.error_generic')));
+        });
+      });
     });
-  });
+  }
 
   // ---------------------------------------------------------------- Évolution d'un engin
   /** Seuils affichés : le plus proche toujours, les suivants s'ils n'écrasent pas la courbe. */

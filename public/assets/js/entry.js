@@ -72,9 +72,26 @@
       });
   }
 
+  // Confirmation avec résumé avant l'envoi : engin, index saisis, carburant converti en litres.
   $(document).on('submit', '[data-entry-form]', function (e) {
     e.preventDefault();
-    submit($(this), false);
+    var $form = $(this);
+    var $card = $form.closest('[data-entry-card]');
+    var $fuel = $form.find('[data-fuel-field]');
+    var fuelInput = $fuel.find('input')[0];
+    var rows = window.PM.summaryRows(this).map(function (row) {
+      // Carburant : la graduation seule ne parle pas, on affiche la conversion (« 2 / 4 → 40 L (50 %) »).
+      return fuelInput && fuelInput.value !== '' && row[1] === fuelInput.value ? [row[0], $fuel.find('[data-fuel-preview]').text()] : row;
+    });
+    window.PM.confirmSubmit(this, {
+      title: t('js.entry.confirm_title', { code: $card.find('.entry-card__head strong').first().text() }),
+      kind: 'save',
+      confirmLabel: t('js.entry.confirm_ok'),
+      rows: rows
+    }).then(function (ok) {
+      if (ok) submit($form, false);
+      else $form.find('input[type=number]').first().trigger('focus');
+    });
   });
 
   // Carte déjà relevée : le formulaire ne s'ouvre qu'à la demande (correction ou nouveau relevé).

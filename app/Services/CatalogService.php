@@ -8,6 +8,7 @@ use App\Core\Database;
 use App\Core\HttpException;
 use App\Core\Validator;
 use App\Repositories\CatalogRepository;
+use App\Repositories\FuelGaugeRepository;
 
 /** Gestion du référentiel marques / modèles (journalisée). */
 final class CatalogService
@@ -16,6 +17,7 @@ final class CatalogService
         private readonly Database $db,
         private readonly CatalogRepository $catalog,
         private readonly ActivityLogger $logger,
+        private readonly FuelGaugeRepository $gauges,
     ) {
     }
 
@@ -96,6 +98,74 @@ final class CatalogService
             $before = $this->catalog->findCategory($id) ?? throw HttpException::notFound();
             $this->catalog->updateCategoryMeterBasis($id, $data['meter_basis']);
             $this->logger->log('update', 'category', $id, null, ['meter_basis' => $before['meter_basis']], ['meter_basis' => $data['meter_basis']], $before['name']);
+        });
+    }
+
+    // ------------------------------------------------------------------ Indicateurs de carburant
+
+    /** Type d'indicateur : à graduations (aiguille, barres : N graduations) ou numérique en %. */
+    private static function gaugeData(array $input): array
+    {
+        $data = Validator::validate($input, [
+            'name' => 'required|string|max:80',
+            'kind' => 'required|in:marks,percent',
+            'marks' => 'int|min:1|max:20',
+            'is_active' => 'bool',
+        ]);
+        if ($data['kind'] === 'marks' && $data['marks'] === null) {
+            throw Validator::fail('marks', 'required');
+        }
+        if ($data['kind'] === 'percent') {
+            $data['marks'] = null;
+        }
+
+        return $data;
+    }
+
+    public function createGauge(array $input): int
+    {
+        $data = self::gaugeData($input);
+        if ($this->gauges->nameExists($data['name'])) {
+            throw Validator::fail('name', 'unique');
+        }
+
+        return $this->db->transaction(function () use ($data): int {
+            $id = $this->gauges->create($data['name'], $data['kind'], $data['marks']);
+            $this->logger->log('create', 'fuel_gauge', $id, null, null, $data, $data['name']);
+
+            return $id;
+        });
+    }
+
+    public function updateGauge(int $id, array $input): void
+    {
+        $data = self::gaugeData($input + ['is_active' => '1']);
+        if ($this->gauges->nameExists($data['name'], $id)) {
+            throw Validator::fail('name', 'unique');
+        }
+        $this->db->transaction(function () use ($id, $data): void {
+            $before = $this->gauges->find($id) ?? throw HttpException::notFound();
+            $this->gauges->update($id, $data['name'], $data['kind'], $data['marks'], (bool) $data['is_active']);
+            $this->logger->log('update', 'fuel_gauge', $id, null, $before, $this->gauges->find($id), $data['name']);
+        });
+    }
+
+    /** Indicateur et capacité du réservoir d'un modèle (repris par ses engins, sauf réglage propre à l'engin). */
+    public function setModelFuel(int $modelId, array $input): void
+    {
+        $data = Validator::validate($input, [
+            'fuel_gauge_id' => 'int',
+            'tank_capacity_l' => 'int|min:1|max:20000',
+        ]);
+        if ($data['fuel_gauge_id'] !== null && $this->gauges->find($data['fuel_gauge_id']) === null) {
+            throw Validator::fail('fuel_gauge_id', 'exists');
+        }
+        $this->db->transaction(function () use ($modelId, $data): void {
+            $before = $this->catalog->findModel($modelId) ?? throw HttpException::notFound();
+            $this->gauges->setModelFuel($modelId, $data['fuel_gauge_id'], $data['tank_capacity_l']);
+            $this->logger->log('update', 'model', $modelId, null,
+                ['fuel_gauge_id' => $before['fuel_gauge_id'] ?? null, 'tank_capacity_l' => $before['tank_capacity_l'] ?? null],
+                $data, $before['brand'] . ' ' . $before['name']);
         });
     }
 }

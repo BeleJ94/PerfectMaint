@@ -24,6 +24,35 @@ final class CatalogRepository extends Repository
         return $this->db->fetchOne('SELECT id, code, name, family, meter_basis FROM equipment_categories WHERE id = :id', ['id' => $id]);
     }
 
+    /** Catégories actives avec leur nombre d'engins (tous sites), pour le référentiel. */
+    public function categoriesWithUsage(): array
+    {
+        return $this->db->fetchAll(
+            'SELECT c.id, c.code, c.name, c.family, c.meter_basis,
+                    (SELECT COUNT(*) FROM equipment e WHERE e.category_id = c.id AND e.is_archived = 0) AS equipment_count
+               FROM equipment_categories c WHERE c.is_active = 1 ORDER BY c.family, c.name'
+        );
+    }
+
+    /**
+     * Ce qui reste à compléter dans le référentiel : engins sans modèle,
+     * modèles utilisés sans indicateur de carburant ou sans capacité de réservoir.
+     *
+     * @return array{equipment: int, without_model: int, models_used: int, models_incomplete: int}
+     */
+    public function completeness(): array
+    {
+        $row = $this->db->fetchOne(
+            "SELECT (SELECT COUNT(*) FROM equipment WHERE is_archived = 0) AS equipment,
+                    (SELECT COUNT(*) FROM equipment WHERE is_archived = 0 AND model_id IS NULL) AS without_model,
+                    (SELECT COUNT(DISTINCT m.id) FROM equipment_models m JOIN equipment e ON e.model_id = m.id AND e.is_archived = 0) AS models_used,
+                    (SELECT COUNT(DISTINCT m.id) FROM equipment_models m JOIN equipment e ON e.model_id = m.id AND e.is_archived = 0
+                      WHERE m.fuel_gauge_id IS NULL OR m.tank_capacity_l IS NULL) AS models_incomplete"
+        ) ?? [];
+
+        return array_map('intval', $row);
+    }
+
     public function updateCategoryMeterBasis(int $id, string $basis): void
     {
         $this->db->execute('UPDATE equipment_categories SET meter_basis = :b WHERE id = :id', ['b' => $basis, 'id' => $id]);
@@ -72,10 +101,12 @@ final class CatalogRepository extends Repository
     {
         return $this->db->fetchAll(
             'SELECT m.id, m.brand_id, m.category_id, m.name, m.is_active, b.name AS brand, c.name AS category,
+                    m.fuel_gauge_id, m.tank_capacity_l, g.name AS fuel_gauge,
                     (SELECT COUNT(*) FROM equipment e WHERE e.model_id = m.id AND e.is_archived = 0) AS equipment_count
                FROM equipment_models m
                JOIN equipment_brands b ON b.id = m.brand_id
                LEFT JOIN equipment_categories c ON c.id = m.category_id
+               LEFT JOIN fuel_gauges g ON g.id = m.fuel_gauge_id
               WHERE ' . ($activeOnly ? '(m.is_active = 1 AND b.is_active = 1) OR m.id = :inc' : '1=1 OR m.id = :inc') . '
               ORDER BY b.name, m.name',
             ['inc' => $includeId ?? 0]
@@ -85,7 +116,7 @@ final class CatalogRepository extends Repository
     public function findModel(int $id): ?array
     {
         return $this->db->fetchOne(
-            'SELECT m.id, m.brand_id, m.category_id, m.name, m.is_active, b.name AS brand
+            'SELECT m.id, m.brand_id, m.category_id, m.name, m.is_active, m.fuel_gauge_id, m.tank_capacity_l, b.name AS brand
                FROM equipment_models m JOIN equipment_brands b ON b.id = m.brand_id WHERE m.id = :id',
             ['id' => $id]
         );

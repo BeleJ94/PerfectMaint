@@ -50,6 +50,8 @@ final class EquipmentService
             'commissioned_at' => 'date',
             'hour_meter' => 'int|min:0|max:999999',
             'meter_basis' => 'in:hours,km',
+            'fuel_gauge_id' => 'int',
+            'tank_capacity_l' => 'int|min:1|max:20000',
             'notes' => 'string|max:5000',
         ];
     }

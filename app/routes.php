@@ -159,6 +159,9 @@ return static function (Router $r): void {
     $r->post('/catalog/models', [CatalogController::class, 'storeModel'], ['permission' => 'equipment.manage']);
     $r->post('/catalog/models/{id}', [CatalogController::class, 'updateModel'], ['permission' => 'equipment.manage']);
     $r->post('/catalog/categories/{id}', [CatalogController::class, 'updateCategory'], ['permission' => 'equipment.manage']);
+    $r->post('/catalog/models/{id}/fuel', [CatalogController::class, 'modelFuel'], ['permission' => 'equipment.manage']);
+    $r->post('/catalog/gauges', [CatalogController::class, 'storeGauge'], ['permission' => 'equipment.manage']);
+    $r->post('/catalog/gauges/{id}', [CatalogController::class, 'updateGauge'], ['permission' => 'equipment.manage']);
 
     // Administration
     $r->get('/sites', [SiteController::class, 'index'], ['permission' => 'sites.manage']);
