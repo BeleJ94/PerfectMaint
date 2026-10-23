@@ -117,6 +117,31 @@ final class MeterReadingTest extends DatabaseTestCase
         self::assertSame(0, (int) $this->value('SELECT COUNT(*) FROM meter_readings WHERE id = :id', ['id' => $id]));
     }
 
+    public function testBulkDeleteIsAllOrNothingAndResyncsEachEquipment(): void
+    {
+        $first = $this->reading(1000, '3');
+        $second = $this->reading(1020, '2');
+        $third = $this->reading(1040, '1');
+        $this->db->execute('UPDATE equipment SET hour_meter = 1040 WHERE id = :id', ['id' => $this->equipment]);
+        $other = $this->createEquipment($this->createSite('METALKOL'), 'MET-01', 'available', 10);
+        $foreign = $this->db->insert('INSERT INTO meter_readings (equipment_id, hour_meter, recorded_at) VALUES (:e, 10, NOW())', ['e' => $other]);
+
+        $manager = Session::memory(['auth_user_id' => $this->createUser('manager', [$this->site]), '_csrf_token' => str_repeat('a', 64)]);
+        self::assertSame(403, $this->http($manager, 'POST', '/readings/delete', self::CSRF + ['ids' => [$third]], self::AJAX)->status);
+        self::assertSame(422, $this->http($this->admin, 'POST', '/readings/delete', self::CSRF + ['ids' => []], self::AJAX)->status);
+
+        // Un identifiant inconnu annule tout le lot.
+        self::assertSame(404, $this->http($this->admin, 'POST', '/readings/delete', self::CSRF + ['ids' => [$third, 999999]], self::AJAX)->status);
+        self::assertSame(3, (int) $this->value('SELECT COUNT(*) FROM meter_readings WHERE equipment_id = :e', ['e' => $this->equipment]));
+
+        $res = $this->http($this->admin, 'POST', '/readings/delete', self::CSRF + ['ids' => [$second, $third, $foreign]], self::AJAX);
+        self::assertSame(200, $res->status);
+        self::assertSame(3, json_decode($res->body, true)['count']);
+        self::assertSame([$first], array_map('intval', array_column($this->db->fetchAll('SELECT id FROM meter_readings'), 'id')));
+        self::assertSame(1000, $this->hours(), 'Compteur recalé sur le relevé restant');
+        self::assertSame(3, (int) $this->value("SELECT COUNT(*) FROM activity_log WHERE action = 'reading_delete'"), 'Chaque relevé journalisé');
+    }
+
     public function testAdministratorEditsAndDeletesReadingsAndMetersFollow(): void
     {
         $old = $this->reading(1000, '3');

@@ -44,6 +44,12 @@ $view->share('pageScripts', ['js/readings.js']);
             <input id="filter-to" type="date" name="to" class="input" data-filter>
         </div>
     </form>
+    <?php /* Suppression en lot : apparaît dès qu'un relevé est coché (sélection conservée d'une page à l'autre). */ ?>
+    <div class="bulk-bar" data-bulk-bar data-url="<?= e(url('/readings/delete')) ?>" hidden>
+        <span class="bulk-bar__count" data-bulk-count aria-live="polite"></span>
+        <button type="button" class="btn btn--sm btn--ghost" data-bulk-clear><i data-lucide="x"></i><?= e(t('readings.bulk_clear')) ?></button>
+        <button type="button" class="btn btn--sm btn--danger" data-bulk-delete><i data-lucide="trash-2"></i><?= e(t('readings.bulk_delete')) ?></button>
+    </div>
     <div class="table-wrap">
         <table class="display" style="width:100%" data-table="readings" data-source="<?= e(url('/readings/data')) ?>" data-reading-url="<?= e(url('/readings/{id}')) ?>"
                data-equipment-url="<?= e(url('/equipment/{id}')) ?>" data-now="<?= e(date('Y-m-d\TH:i')) ?>"></table>

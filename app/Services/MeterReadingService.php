@@ -157,6 +157,46 @@ final class MeterReadingService
         });
     }
 
+    /** Au-delà, la suppression en lot est refusée (sélection anormale). */
+    public const MAX_BATCH = 500;
+
+    /**
+     * Suppression en lot : tout ou rien, dans une transaction ; chaque relevé est journalisé
+     * et les compteurs de chaque engin concerné sont recalés une seule fois.
+     *
+     * @param list<mixed> $ids
+     * @return int nombre de relevés supprimés
+     */
+    public function deleteMany(array $ids): int
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $id) => $id > 0)));
+        if ($ids === []) {
+            throw Validator::fail('ids', 'readings_none_selected');
+        }
+        if (count($ids) > self::MAX_BATCH) {
+            throw Validator::fail('ids', 'readings_too_many', ['max' => self::MAX_BATCH]);
+        }
+
+        return $this->db->transaction(function () use ($ids): int {
+            $touched = [];
+            foreach ($ids as $id) {
+                $reading = $this->readings->find($id) ?? throw HttpException::notFound();
+                $equipmentId = (int) $reading['equipment_id'];
+                $touched[$equipmentId] ??= $this->equipment->findForUpdate($equipmentId) ?? throw HttpException::notFound();
+                $this->readings->delete($id);
+                $this->logger->log('reading_delete', 'equipment', $equipmentId, (int) $touched[$equipmentId]['site_id'],
+                    array_filter(array_intersect_key($reading, array_flip(['recorded_at', 'hour_meter', 'odometer_km', 'fuel_level'])),
+                        static fn ($v) => $v !== null),
+                    null, $touched[$equipmentId]['code'] . ' · ' . format_date(substr((string) $reading['recorded_at'], 0, 10)));
+            }
+            foreach (array_keys($touched) as $equipmentId) {
+                $this->readings->syncEquipment($equipmentId);
+            }
+
+            return count($ids);
+        });
+    }
+
     /** Les compteurs ne reculent pas : la valeur reste entre l'index précédent et l'index suivant. */
     private function checkBounds(array $bounds, ?int $hours, ?int $km): void
     {

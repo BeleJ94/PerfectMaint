@@ -456,7 +456,8 @@
 
     $.getJSON(source, params)
       .then(function (json) {
-        var data = Exporter.tableData(def.columns, json.data || [], locale);
+        // Colonnes d'interface (cases de sélection…) exclues des exports.
+        var data = Exporter.tableData(def.columns.filter(function (c) { return c.export !== false; }), json.data || [], locale);
         var meta = { subtitle: t('js.export_meta', { count: json.recordsFiltered, date: Core.formatDate(new Date().toISOString().slice(0, 10), locale) }) };
         if (json.recordsFiltered > json.data.length) {
           meta.subtitle += ' — ' + t('js.export_truncated', { count: json.data.length });

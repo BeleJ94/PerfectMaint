@@ -70,6 +70,15 @@ final class MeterReadingController extends Controller
             : $this->redirect('/readings', t('flash.updated'));
     }
 
+    /** Suppression en lot depuis le répertoire (AJAX) : ids[] des relevés cochés. */
+    public function deleteMany(Request $request): Response
+    {
+        $ids = $request->body['ids'] ?? [];
+        $count = $this->service->deleteMany(is_array($ids) ? $ids : []);
+
+        return $this->json(['ok' => true, 'count' => $count, 'message' => t('flash.readings_deleted', ['count' => $count])]);
+    }
+
     public function delete(Request $request, array $params): Response
     {
         $this->service->delete($this->id($params));

@@ -1602,3 +1602,11 @@ table.dataTable tbody tr.row-modal:focus-visible { outline: 2px solid var(--acce
 .reading-details dd { margin: 0; }
 .reading-form .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
 .reading-form .field { display: grid; gap: 4px; text-align: left; }
+
+/* ---------- Répertoire des index : sélection et suppression en lot ---------- */
+table.dataTable th.select-cell, table.dataTable td.select-cell { width: 32px; text-align: center; cursor: default; }
+table.dataTable .select-cell input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+table.dataTable tbody tr.is-selected > td { background: var(--accent-soft); }
+.bulk-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius); }
+.bulk-bar[hidden] { display: none; }
+.bulk-bar__count { font-weight: 600; font-size: .875rem; margin-right: auto; }

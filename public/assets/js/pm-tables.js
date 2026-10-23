@@ -224,8 +224,13 @@
 
       // Répertoire général des index (administrateur) : un clic sur la ligne ouvre la modification
       readings: {
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         columns: [
+          // Sélection pour la suppression en lot (gérée par readings.js), absente des exports
+          { data: 'id', title: '<input type="checkbox" data-select-page aria-label="' + esc(t('js.readings.select_page')) + '">',
+            orderable: false, export: false, className: 'select-cell', html: function (r) {
+              return '<input type="checkbox" data-select-row value="' + esc(r.id) + '" aria-label="' + esc(t('js.readings.select_row', { code: r.code })) + '">';
+            }, text: function () { return ''; } },
           { data: 'recorded_at', title: t('js.date'), className: 'nowrap', text: function (r) { return dateTime(r.recorded_at); } },
           { data: 'code', title: t('fields.equipment_id'), html: function (r) {
             return '<strong>' + esc(r.code) + '</strong><br><span class="muted">' + esc(r.equipment_name) + '</span>';

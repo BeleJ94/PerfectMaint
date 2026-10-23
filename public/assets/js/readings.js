@@ -301,8 +301,106 @@
 
   $table.on('click keydown', 'tbody tr', function (e) {
     if (e.type === 'keydown' && e.key !== 'Enter') return;
-    if ($(e.target).closest('a, button, input, select').length) return;
+    if ($(e.target).closest('a, button, input, select, .select-cell').length) return;
     var r = api.row(this).data();
     if (r) open(r);
   });
+})(jQuery, window.PMCore);
+
+/*
+ * Répertoire des index : suppression en lot. Les cases cochées sont mémorisées d'une page à l'autre
+ * (vidées si les filtres changent) ; la case d'en-tête coche / décoche la page affichée.
+ * Confirmation récapitulative → envoi AJAX → notification → rechargement du tableau.
+ */
+(function ($, Core) {
+  'use strict';
+
+  var $table = $('table[data-table="readings"]');
+  var $bar = $('[data-bulk-bar]');
+  if (!$table.length || !$bar.length || !$.fn.dataTable.isDataTable($table)) return;
+  var t = window.PM.t;
+  var locale = document.documentElement.lang || 'fr';
+  var api = $table.DataTable();
+  var selected = {}; // id → libellé (engin · date) pour le récapitulatif
+
+  function ids() { return Object.keys(selected); }
+
+  function refresh() {
+    var n = ids().length;
+    $bar.prop('hidden', n === 0);
+    $bar.find('[data-bulk-count]').text(t('js.readings.selected', { n: n }));
+    var $rows = $table.find('[data-select-row]');
+    $rows.each(function () {
+      this.checked = !!selected[this.value];
+      $(this).closest('tr').toggleClass('is-selected', this.checked);
+    });
+    var checked = $rows.filter(':checked').length;
+    var head = $(api.table().header()).find('[data-select-page]')[0];
+    if (head) {
+      head.checked = $rows.length > 0 && checked === $rows.length;
+      head.indeterminate = checked > 0 && checked < $rows.length;
+    }
+  }
+
+  function label(row) { return row.code + ' · ' + Core.formatDate(row.recorded_at, locale, true); }
+
+  api.on('draw', refresh);
+
+  $table.on('change', '[data-select-row]', function () {
+    var row = api.row($(this).closest('tr')).data();
+    if (this.checked && row) selected[this.value] = label(row); else delete selected[this.value];
+    refresh();
+  });
+
+  $(api.table().header()).on('change', '[data-select-page]', function () {
+    var on = this.checked;
+    api.rows({ page: 'current' }).data().each(function (row) {
+      if (on) selected[row.id] = label(row); else delete selected[row.id];
+    });
+    refresh();
+  });
+  // La case d'en-tête ne trie pas la colonne.
+  $(api.table().header()).on('click', '[data-select-page]', function (e) { e.stopPropagation(); });
+
+  // Clic dans la cellule de sélection : coche la case, sans ouvrir la modale du relevé.
+  $table.on('click', 'td.select-cell', function (e) {
+    e.stopPropagation();
+    if (e.target.tagName !== 'INPUT') $(this).find('input').prop('checked', function (i, v) { return !v; }).trigger('change');
+  });
+
+  // Filtres modifiés : la sélection ne correspond plus à ce qui est affiché.
+  $(document).on('change', 'form[data-filters-for="readings"] [data-filter]', function () { selected = {}; refresh(); });
+  $(document).on('click', 'form[data-filters-for="readings"] [data-filters-reset]', function () { selected = {}; refresh(); });
+
+  $bar.on('click', '[data-bulk-clear]', function () { selected = {}; refresh(); });
+
+  $bar.on('click', '[data-bulk-delete]', function () {
+    var list = ids();
+    if (!list.length) return;
+    var rows = list.map(function (id) { return [t('js.readings.reading'), selected[id]]; });
+    window.PM.confirmSubmit(document.createElement('form'), {
+      title: t('js.readings.bulk_title', { n: list.length }),
+      message: t('js.readings.bulk_message', { n: list.length }),
+      kind: 'danger',
+      confirmLabel: t('js.readings.bulk_ok', { n: list.length }),
+      rows: rows
+    }).then(function (ok) {
+      if (!ok) return;
+      Swal.fire({ title: t('js.dt.processing'), allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      $.post($bar.data('url'), { ids: list })
+        .done(function (json) {
+          selected = {};
+          Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: json.message, showConfirmButton: false, timer: 2600, timerProgressBar: true });
+          api.ajax.reload(null, false);
+        })
+        .fail(function (xhr) {
+          if (xhr.status === 401) { window.location.reload(); return; }
+          var json = xhr.responseJSON || {};
+          var text = json.errors ? Object.keys(json.errors).map(function (k) { return json.errors[k]; }).join('\n') : (json.error || t('js.entry.offline'));
+          Swal.fire({ icon: 'error', title: t('js.readings.error'), text: text, confirmButtonColor: '#1F4E79' });
+        });
+    });
+  });
+
+  refresh();
 })(jQuery, window.PMCore);

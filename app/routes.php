@@ -111,6 +111,7 @@ return static function (Router $r): void {
     // Répertoire général des index (administrateur) : modification et suppression des relevés
     $r->get('/readings', [MeterReadingController::class, 'index'], ['permission' => 'readings.manage']);
     $r->get('/readings/data', [MeterReadingController::class, 'data'], ['permission' => 'readings.manage']);
+    $r->post('/readings/delete', [MeterReadingController::class, 'deleteMany'], ['permission' => 'readings.manage']);
     $r->get('/readings/{id}/edit', [MeterReadingController::class, 'edit'], ['permission' => 'readings.manage']);
     $r->post('/readings/{id}', [MeterReadingController::class, 'update'], ['permission' => 'readings.manage']);
     $r->post('/readings/{id}/delete', [MeterReadingController::class, 'delete'], ['permission' => 'readings.manage']);
