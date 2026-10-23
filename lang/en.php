@@ -1234,7 +1234,6 @@ return [
     'js.readings.bulk_title' => 'Delete :n reading(s)',
     'js.readings.bulk_message' => 'These :n readings will be permanently deleted; the meters of the equipment concerned will be reset to their latest remaining reading.',
     'js.readings.bulk_ok' => 'Delete the :n readings',
-    'work_orders.preview' => 'Preview',
     'js.wo_preview.loading' => 'Preparing the preview…',
     'js.wo_preview.title' => 'Job sheet :reference',
     'js.wo_preview.download' => 'Download',

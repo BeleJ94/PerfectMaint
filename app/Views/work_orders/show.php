@@ -26,8 +26,8 @@ if ($wo['completed_at']) {
         <?= status_badge($wo['equipment_status']) ?>
     </a>
     <div class="eq-hero__actions">
-        <button type="button" class="btn" data-wo-preview><i data-lucide="eye"></i><?= e(t('work_orders.preview')) ?></button>
-        <button type="button" class="btn" data-wo-pdf><i data-lucide="printer"></i><?= e(t('work_orders.print')) ?></button>
+        <?php /* Aperçu en modale, avec téléchargement et impression (l'écran terrain télécharge directement). */ ?>
+        <button type="button" class="btn" data-wo-preview><i data-lucide="printer"></i><?= e(t('work_orders.print')) ?></button>
         <?php if ($currentUser->can('workorder.manage') && !$status->isClosed()): ?>
             <a class="btn" href="<?= e(url('/work-orders/' . $wo['id'] . '/edit')) ?>"><i data-lucide="pencil"></i><?= e(t('common.edit')) ?></a>
         <?php endif; ?>

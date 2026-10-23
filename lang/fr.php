@@ -1254,7 +1254,6 @@ return [
     'js.readings.bulk_title' => 'Supprimer :n relevé(s)',
     'js.readings.bulk_message' => 'Ces :n relevés seront supprimés définitivement ; les compteurs des engins concernés seront recalés sur leur relevé le plus récent restant.',
     'js.readings.bulk_ok' => 'Supprimer les :n relevés',
-    'work_orders.preview' => 'Aperçu',
     'js.wo_preview.loading' => 'Préparation de l\'aperçu…',
     'js.wo_preview.title' => 'Bon de travail :reference',
     'js.wo_preview.download' => 'Télécharger',
