@@ -655,56 +655,140 @@
     });
   }
 
-  // ---------------------------------------------------------------- Notifications (cloche)
+  // ---------------------------------------------------------------- Notifications (cloche) et pastilles du menu
+  /*
+   * - Couleur selon la gravité : rouge = bloquant (bad), orange = à prévoir (warn), gris = information (info).
+   * - « Nouveau » : compteur en hausse depuis la dernière consultation (mémorisé par utilisateur, dans ce navigateur).
+   * - Actualisation chaque minute (en pause onglet masqué) ; toast discret quand un point bloquant augmente.
+   * - Panneau groupé : À traiter maintenant / À prévoir / Information.
+   */
   $('[data-notifications]').each(function () {
     var $root = $(this);
     var $panel = $root.find('[data-notif-panel]');
     var $list = $root.find('[data-notif-list]');
     var $badge = $root.find('[data-notif-badge]');
+    var RANK = { bad: 3, warn: 2, info: 1 };
+    var GROUPS = [['bad', 'js.notif_group_bad'], ['warn', 'js.notif_group_warn'], ['info', 'js.notif_group_info']];
+    var storeKey = 'pm.notif.seen.' + ($root.data('user') || '0');
     var items = [];
-    function render(json) {
-      items = json.items || [];
-      // Pastilles du menu : mêmes compteurs que les notifications
-      var counts = {};
-      items.forEach(function (it) { counts[it.key] = it.count; });
+    var previous = null; // compteurs de l'actualisation précédente (toasts)
+
+    function readSeen() { try { return JSON.parse(localStorage.getItem(storeKey) || '{}'); } catch (e) { return {}; } }
+    function writeSeen(map) { try { localStorage.setItem(storeKey, JSON.stringify(map)); } catch (e) { /* stockage indisponible */ } }
+    function isNew(it, seen) { return (seen[it.key] || 0) < it.count; }
+
+    function navBadges(counts, levels) {
       $('[data-nav-badge]').each(function () {
-        var total = this.dataset.navBadge.split(' ').reduce(function (sum, key) { return sum + (counts[key] || 0); }, 0);
+        var keys = this.dataset.navBadge.split(' ');
+        var total = keys.reduce(function (sum, key) { return sum + (counts[key] || 0); }, 0);
+        var level = keys.reduce(function (best, key) { return counts[key] && RANK[levels[key]] > RANK[best] ? levels[key] : best; }, 'info');
         this.hidden = total === 0;
         this.textContent = total > 99 ? '99+' : String(total);
+        this.className = 'nav__badge nav__badge--' + level;
+        this.title = { bad: t('js.notif_level_bad'), warn: t('js.notif_level_warn'), info: t('js.notif_level_info') }[level];
       });
-      $badge.prop('hidden', !json.count).text(json.count > 9 ? '9+' : json.count);
+    }
+
+    function render(json) {
+      items = json.items || [];
+      var seen = readSeen();
+      var counts = {};
+      var levels = {};
+      items.forEach(function (it) { counts[it.key] = it.count; levels[it.key] = it.level; });
+      navBadges(counts, levels);
+
+      // Cloche : nombre de nouveautés ; sinon un point de la gravité la plus haute s'il reste des points ouverts.
+      var fresh = items.filter(function (it) { return isNew(it, seen); });
+      var top = items.reduce(function (best, it) { return RANK[it.level] > RANK[best] ? it.level : best; }, 'info');
+      $badge.prop('hidden', !items.length)
+        .text(fresh.length ? (fresh.length > 9 ? '9+' : fresh.length) : '')
+        .attr('class', 'notif__badge notif__badge--' + top + (fresh.length ? '' : ' notif__badge--dot'));
       $root.toggleClass('has-items', items.length > 0);
+      $root.find('[data-notif-scope]').text(' · ' + $root.data('scope'));
+
       if (!items.length) {
-        $list.html('<li class="notif__empty"><i data-lucide="check-circle-2"></i>' + Core.escapeHtml(t('js.notif_none')) + '</li>');
+        $list.html('<p class="notif__empty"><i data-lucide="check-circle-2"></i>' + Core.escapeHtml(t('js.notif_none')) + '</p>');
       } else {
-        $list.html(items.map(function (it, i) {
-          return '<li><button type="button" class="notif__item notif__item--' + it.level + '" data-notif-item="' + i + '">'
-            + '<span class="notif__icon"><i data-lucide="' + Core.escapeHtml(it.icon) + '"></i></span>'
-            + '<span class="notif__label">' + Core.escapeHtml(it.label) + '</span>'
-            + '<i data-lucide="chevron-right" class="notif__chev"></i></button></li>';
+        $list.html(GROUPS.map(function (g) {
+          var group = items.map(function (it, i) { return [it, i]; }).filter(function (p) { return p[0].level === g[0]; });
+          if (!group.length) return '';
+          return '<section class="notif__group notif__group--' + g[0] + '"><h3>' + Core.escapeHtml(t(g[1])) + '<span>' + group.length + '</span></h3><ul>'
+            + group.map(function (p) {
+              var it = p[0];
+              return '<li><button type="button" class="notif__item notif__item--' + it.level + (isNew(it, seen) ? ' is-new' : '') + '" data-notif-item="' + p[1] + '">'
+                + '<span class="notif__icon"><i data-lucide="' + Core.escapeHtml(it.icon) + '"></i></span>'
+                + '<span class="notif__label">' + Core.escapeHtml(it.label) + (isNew(it, seen) ? '<em>' + Core.escapeHtml(t('js.notif_new')) + '</em>' : '') + '</span>'
+                + '<i data-lucide="chevron-right" class="notif__chev"></i></button></li>';
+            }).join('') + '</ul></section>';
         }).join(''));
       }
       icons();
+
+      // Toast : point bloquant apparu ou en hausse depuis la dernière actualisation (pas au chargement de la page).
+      if (previous) {
+        var rising = items.filter(function (it) { return it.level === 'bad' && it.count > (previous[it.key] || 0); });
+        // Une seule fenêtre SweetAlert à la fois : jamais de toast par-dessus une saisie ou une confirmation en cours.
+        if (rising.length && Swal.isVisible()) return;
+        if (rising.length) {
+          toast.fire({
+            icon: 'warning',
+            title: rising[0].label + (rising.length > 1 ? ' (+' + (rising.length - 1) + ')' : ''),
+            text: t('js.notif_toast_hint'),
+            timer: 7000,
+            didOpen: function (el) {
+              el.style.cursor = 'pointer';
+              el.addEventListener('click', function () { Swal.close(); openPanel(); });
+            }
+          });
+        }
+      }
+      previous = counts;
     }
-    function load() {
-      return $.getJSON($root.data('url')).then(render);
+
+    function load() { return $.getJSON($root.data('url')).then(render); }
+    function markSeen() {
+      var map = {};
+      items.forEach(function (it) { map[it.key] = it.count; });
+      writeSeen(map);
+      render({ items: items });
     }
+    function openPanel() {
+      $panel.prop('hidden', false);
+      $root.find('[data-notif-toggle]').attr('aria-expanded', 'true');
+    }
+
     setTimeout(load, 400);
+    setInterval(function () { if (!document.hidden) load(); }, 60000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+
     $root.on('click', '[data-notif-toggle]', function (e) {
       e.stopPropagation();
       var open = $panel.prop('hidden');
       $panel.prop('hidden', !open);
       $(this).attr('aria-expanded', open ? 'true' : 'false');
       if (open) load();
+      // Fermeture du panneau : ce qui a été vu n'est plus « nouveau ».
+      else markSeen();
     });
+    $root.on('click', '[data-notif-seen]', function (e) { e.stopPropagation(); markSeen(); });
     $root.on('click', '[data-notif-item]', function () {
       var it = items[Number(this.dataset.notifItem)];
+      var seen = readSeen();
+      seen[it.key] = it.count;
+      writeSeen(seen);
       $panel.prop('hidden', true);
+      render({ items: items });
       if (it.drill) openDrill(it.drill, $root.find('[data-notif-toggle]')[0]);
       else if (it.link) window.location.href = it.link;
     });
     $(document).on('click', function (e) {
-      if (!$(e.target).closest('[data-notifications]').length) $panel.prop('hidden', true);
+      if (!$panel.prop('hidden') && !$(e.target).closest('[data-notifications]').length) {
+        $panel.prop('hidden', true);
+        markSeen();
+      }
+    });
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape' && !$panel.prop('hidden')) { $panel.prop('hidden', true); markSeen(); }
     });
   });
 

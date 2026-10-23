@@ -111,6 +111,21 @@ final class WorkOrderRepository extends Repository
         return [$where, $p];
     }
 
+    /** Recherche rapide (Ctrl + K) : référence, titre ou code engin, OT ouverts d'abord. */
+    public function quickSearch(string $term, int $limit = 6): array
+    {
+        [$scopeSql, $params] = $this->scope->clause('w.site_id');
+        [$searchSql, $searchParams] = $this->searchClause(['w.reference', 'w.title', 'e.code'], $term);
+
+        return $this->db->fetchAll(
+            "SELECT w.id, w.reference, w.title, w.status, w.priority, e.code AS equipment_code, s.name AS site
+               FROM " . self::FROM . "
+              WHERE $scopeSql AND $searchSql
+              ORDER BY w.status IN " . self::OPEN . " DESC, w.reported_at DESC LIMIT " . max(1, min(20, $limit)),
+            $params + $searchParams
+        );
+    }
+
     public function find(int $id): ?array
     {
         [$scopeSql, $params] = $this->scope->clause('w.site_id');

@@ -16,6 +16,7 @@ use App\Controllers\NotificationController;
 use App\Controllers\PartController;
 use App\Controllers\PreventiveController;
 use App\Controllers\ProcurementController;
+use App\Controllers\SearchController;
 use App\Controllers\SettingsController;
 use App\Controllers\SiteController;
 use App\Controllers\SiteOverviewController;
@@ -119,6 +120,7 @@ return static function (Router $r): void {
     // Pilotage : alertes, planning, rapports de direction
     $r->get('/alerts', [ManagementController::class, 'alerts'], ['permission' => 'dashboard.view']);
     $r->get('/notifications', [NotificationController::class, 'index'], ['permission' => 'dashboard.view']);
+    $r->get('/search', [SearchController::class, 'index'], ['permission' => 'dashboard.view']);
     $r->get('/planning', [ManagementController::class, 'planning'], ['permission' => 'dashboard.view']);
     $r->get('/reports', [ManagementController::class, 'reports'], ['permission' => 'reports.view']);
 

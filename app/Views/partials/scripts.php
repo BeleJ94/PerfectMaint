@@ -22,6 +22,7 @@ $pmConfig = [
 <script src="<?= e(asset('js/pm-tables.js')) ?>"></script>
 <script src="<?= e(asset('js/pm-export.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
+<script src="<?= e(asset('js/pm-command.js')) ?>"></script>
 <?php foreach ($pageScripts ?? [] as $script): ?>
 <script src="<?= e(asset($script)) ?>"></script>
 <?php endforeach; ?>

@@ -20,6 +20,7 @@ $sections = [
         ['/work-orders', 'clipboard-list', 'nav.work_orders', 'workorder.view', 'overdue'],
         ['/preventive', 'calendar-clock', 'nav.preventive', 'preventive.view', 'preventive'],
         ['/meters', 'gauge', 'nav.meters', 'equipment.view', 'meter_soon meter_stale'],
+        ['/meters/screen', 'monitor', 'nav.meters_screen', 'equipment.view', null, true],
         ['/saisie', 'pencil', 'nav.meter_entry', 'meters.entry', null],
     ]],
     'fleet' => ['nav.section_fleet', [
@@ -29,7 +30,7 @@ $sections = [
     ]],
     'stores' => ['nav.section_stores', [
         ['/parts', 'package', 'nav.parts', 'parts.view', null],
-        ['/procurement', 'shopping-cart', 'nav.procurement', 'parts.view', 'stock_out'],
+        ['/procurement', 'shopping-cart', 'nav.procurement', 'parts.view', 'stock_out stock_low'],
     ]],
 ];
 // Ordre adapté au rôle : le technicien commence par la maintenance.
@@ -44,11 +45,12 @@ $settings = [
     ['/activity', 'history', 'nav.activity', 'activity.view'],
 ];
 $settings = array_values(array_filter($settings, static fn (array $l) => $currentUser->can($l[3])));
-$settingsOpen = (bool) array_filter($settings, static fn (array $l) => $currentPath === $l[0] || str_starts_with($currentPath, $l[0] . '/') && !preg_match('#^/sites/\d+$#', $currentPath));
 $navLink = static function (array $l) use ($currentPath): string {
     $isSiteWindow = $l[0] === '/sites' && preg_match('#^/sites/\d+$#', $currentPath);
     $current = $isSiteWindow ? '' : nav_current($currentPath, $l[0]);
-    return '<li><a href="' . e(url($l[0])) . '"' . $current . ' title="' . e(t($l[2])) . '"><i data-lucide="' . e($l[1]) . '"></i>'
+    // Sous-lien (ex. écran mural du suivi des index) : en retrait, ouvert dans un nouvel onglet.
+    $sub = !empty($l[5]);
+    return '<li' . ($sub ? ' class="nav__sub"' : '') . '><a href="' . e(url($l[0])) . '"' . $current . ($sub ? ' target="_blank" rel="noopener"' : '') . ' title="' . e(t($l[2])) . '"><i data-lucide="' . e($l[1]) . '"></i>'
         . '<span class="nav__text">' . e(t($l[2])) . '</span>'
         . (!empty($l[4]) ? '<span class="nav__badge" data-nav-badge="' . e($l[4]) . '" hidden></span>' : '') . '</a></li>';
 };
@@ -95,15 +97,9 @@ $navLink = static function (array $l) use ($currentPath): string {
                 <?php endif; ?>
             <?php endforeach; ?>
 
-            <?php if ($settings !== []): ?>
-                <li class="nav__group">
-                    <details<?= $settingsOpen ? ' open' : '' ?>>
-                        <summary class="nav__section nav__section--toggle"><span class="nav__text"><?= e(t('nav.section_settings')) ?></span><i data-lucide="chevron-down"></i></summary>
-                        <ul class="nav">
-                            <?php foreach ($settings as $link): ?><?= $navLink($link) ?><?php endforeach; ?>
-                        </ul>
-                    </details>
-                </li>
+            <?php if ($settings !== []): /* Administration toujours visible : référentiel, utilisateurs, journal… */ ?>
+                <li class="nav__section"><span class="nav__text"><?= e(t('nav.section_admin')) ?></span></li>
+                <?php foreach ($settings as $link): ?><?= $navLink($link) ?><?php endforeach; ?>
             <?php endif; ?>
         </ul>
 
@@ -120,13 +116,22 @@ $navLink = static function (array $l) use ($currentPath): string {
             </button>
             <p class="topbar__title"><?= e($title ?? '') ?></p>
             <?php if ($currentUser->can('dashboard.view')): ?>
-            <div class="notif" data-notifications data-url="<?= e(url('/notifications')) ?>">
+            <?php /* Recherche rapide : engins, OT et pages du menu (Ctrl + K) — js/pm-command.js */ ?>
+            <button type="button" class="topbar__search" data-cmdk-open data-url="<?= e(url('/search')) ?>" aria-label="<?= e(t('search.open')) ?>">
+                <i data-lucide="search"></i><span><?= e(t('search.placeholder')) ?></span><kbd>Ctrl K</kbd>
+            </button>
+            <div class="notif" data-notifications data-url="<?= e(url('/notifications')) ?>" data-user="<?= e($currentUser->id) ?>"
+                 data-scope="<?= e($contextSite['name'] ?? t('notify.all_my_sites')) ?>">
                 <button type="button" class="btn btn--ghost notif__btn" data-notif-toggle aria-haspopup="true" aria-expanded="false" aria-label="<?= e(t('notify.title')) ?>">
                     <i data-lucide="bell"></i><span class="notif__badge" data-notif-badge hidden></span>
                 </button>
                 <div class="notif__panel" data-notif-panel hidden>
-                    <div class="notif__head"><strong><?= e(t('notify.title')) ?></strong><a href="<?= e(url('/alerts')) ?>"><?= e(t('nav.alerts')) ?></a></div>
-                    <ul class="notif__list" data-notif-list><li class="notif__empty"><?= e(t('js.dt.loading')) ?></li></ul>
+                    <div class="notif__head">
+                        <div><strong><?= e(t('notify.title')) ?></strong><small class="muted" data-notif-scope></small></div>
+                        <button type="button" class="link-btn small" data-notif-seen><?= e(t('notify.mark_seen')) ?></button>
+                    </div>
+                    <div class="notif__body" data-notif-list><p class="notif__empty"><?= e(t('js.dt.loading')) ?></p></div>
+                    <a class="notif__foot" href="<?= e(url('/alerts')) ?>"><?= e(t('notify.see_all')) ?><i data-lucide="arrow-right"></i></a>
                 </div>
             </div>
             <?php endif; ?>

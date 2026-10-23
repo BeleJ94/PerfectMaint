@@ -78,10 +78,10 @@
     var $form = $(this);
     var $card = $form.closest('[data-entry-card]');
     var $fuel = $form.find('[data-fuel-field]');
-    var fuelInput = $fuel.find('input')[0];
+    var fuelInput = $fuel.find('input[name=fuel_mark], input[name=fuel_level]')[0];
     var rows = window.PM.summaryRows(this).map(function (row) {
       // Carburant : la graduation seule ne parle pas, on affiche la conversion (« 2 / 4 → 40 L (50 %) »).
-      return fuelInput && fuelInput.value !== '' && row[1] === fuelInput.value ? [row[0], $fuel.find('[data-fuel-preview]').text()] : row;
+      return fuelInput && fuelInput.value !== '' && row[1] === fuelInput.value ? [row[0], $fuel.find('[data-fuel-preview]').text().trim()] : row;
     });
     window.PM.confirmSubmit(this, {
       title: t('js.entry.confirm_title', { code: $card.find('.entry-card__head strong').first().text() }),

@@ -11,11 +11,13 @@
 
   function preview(field) {
     var $field = $(field);
-    var $out = $field.find('[data-fuel-preview]');
+    var $box = $field.find('[data-fuel-preview]');
+    var $text = $box.find('[data-fuel-preview-text]');
+    var $out = $text.length ? $text : $box; // texte seul : l'icône éventuelle est conservée
     var marks = Number(field.dataset.marks) || 0;
     var capacity = Number(field.dataset.capacity) || 0;
-    var raw = String($field.find('input').val() || '').replace(',', '.');
-    $out.removeClass('is-error');
+    var raw = String($field.find('input[name=fuel_mark], input[name=fuel_level]').val() || '').replace(',', '.');
+    $box.removeClass('is-error');
     if (raw === '') {
       $out.text(marks ? t('js.fuel.hint', { n: marks }) : t('js.fuel.no_gauge'));
       return;
@@ -23,7 +25,7 @@
     var value = Number(raw);
     if (marks) {
       if (isNaN(value) || value < 0 || value > marks || (value * 2) % 1 !== 0) {
-        $out.addClass('is-error').text(t('js.fuel.range', { n: marks }));
+        $box.addClass('is-error'); $out.text(t('js.fuel.range', { n: marks }));
         return;
       }
       var pct = Math.round(value / marks * 100);
@@ -33,12 +35,12 @@
       return;
     }
     if (isNaN(value) || value < 0 || value > 100) {
-      $out.addClass('is-error').text(t('js.fuel.range_pct'));
+      $box.addClass('is-error'); $out.text(t('js.fuel.range_pct'));
       return;
     }
     $out.text(capacity ? t('js.fuel.result_liters', { liters: fmt(Math.round(value / 100 * capacity * 10) / 10), pct: value }) : t('js.fuel.no_gauge'));
   }
 
-  $(document).on('input', '[data-fuel-field] input', function () { preview($(this).closest('[data-fuel-field]')[0]); });
+  $(document).on('input', '[data-fuel-field] input[name=fuel_mark], [data-fuel-field] input[name=fuel_level]', function () { preview($(this).closest('[data-fuel-field]')[0]); });
   $('[data-fuel-field]').each(function () { preview(this); });
 })(jQuery);
