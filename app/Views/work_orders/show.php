@@ -26,6 +26,7 @@ if ($wo['completed_at']) {
         <?= status_badge($wo['equipment_status']) ?>
     </a>
     <div class="eq-hero__actions">
+        <button type="button" class="btn" data-wo-preview><i data-lucide="eye"></i><?= e(t('work_orders.preview')) ?></button>
         <button type="button" class="btn" data-wo-pdf><i data-lucide="printer"></i><?= e(t('work_orders.print')) ?></button>
         <?php if ($currentUser->can('workorder.manage') && !$status->isClosed()): ?>
             <a class="btn" href="<?= e(url('/work-orders/' . $wo['id'] . '/edit')) ?>"><i data-lucide="pencil"></i><?= e(t('common.edit')) ?></a>
@@ -124,4 +125,4 @@ if ($wo['completed_at']) {
 
 <?= $view->partial('partials/activity', ['activity' => $activity]) ?>
 
-<script type="application/json" id="wo-data"><?= json_for_html(['wo' => $wo, 'parts' => $parts]) ?></script>
+<script type="application/json" id="wo-data"><?= json_for_html(['wo' => $wo, 'parts' => $parts, 'technicians' => $technicians ?? []]) ?></script>

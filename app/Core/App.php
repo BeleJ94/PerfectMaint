@@ -16,7 +16,8 @@ final class App
 {
     public const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
         . "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; "
-        . "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+        // frame-src blob: : aperçu des PDF générés dans le navigateur (bon de travail).
+        . "frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
 
     private function __construct(private readonly array $config, private readonly Container $container)
     {

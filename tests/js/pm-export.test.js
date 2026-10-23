@@ -53,6 +53,11 @@ test('bon de travail PDF : informations et total des pièces', () => {
   assert.match(flat, /Joint remplacé/);
   assert.match(flat, /34,30 \$/, 'Total = 2 × 12,50 + 1,5 × 6,20');
 
+  const withTech = JSON.stringify(Exporter.workOrderDocDefinition(wo, parts, t, 'fr', [{ name: 'Karim', job: 'mechanic', minutes: 45 }]).content);
+  assert.match(withTech, /INTERVENANTS/);
+  assert.match(withTech, /Mécanicien/);
+  assert.match(withTech, /45 min/);
+
   const empty = Exporter.workOrderDocDefinition({ ...wo, labor_minutes: null, resolution: null }, [], t, 'fr');
   assert.match(JSON.stringify(empty.content), /"—"/);
 });

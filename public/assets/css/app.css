@@ -1610,3 +1610,7 @@ table.dataTable tbody tr.is-selected > td { background: var(--accent-soft); }
 .bulk-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius); }
 .bulk-bar[hidden] { display: none; }
 .bulk-bar__count { font-weight: 600; font-size: .875rem; margin-right: auto; }
+
+/* ---------- Aperçu PDF (bon de travail) ---------- */
+.pdf-preview-popup .swal2-html-container { margin: var(--space-2) var(--space-3) 0; }
+.pdf-preview { display: block; width: 100%; height: min(75vh, 900px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }

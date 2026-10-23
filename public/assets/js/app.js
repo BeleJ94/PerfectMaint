@@ -797,8 +797,52 @@
   $(document).on('click', '[data-wo-pdf]', function () {
     var payload = readJson('wo-data');
     loadPdfMake().then(function (pdfMake) {
-      Exporter.downloadPdf(pdfMake, Exporter.workOrderDocDefinition(payload.wo, payload.parts, t, locale),
+      Exporter.downloadPdf(pdfMake, Exporter.workOrderDocDefinition(payload.wo, payload.parts, t, locale, payload.technicians),
         Core.exportFileName(payload.wo.reference, 'pdf'));
+    }).catch(function () { alertError(); });
+  });
+
+  // Aperçu du bon de travail : PDF affiché dans une modale, puis téléchargement ou impression.
+  $(document).on('click', '[data-wo-preview]', function () {
+    var payload = readJson('wo-data');
+    var filename = Core.exportFileName(payload.wo.reference, 'pdf');
+    Swal.fire({ title: t('js.wo_preview.loading'), allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+    loadPdfMake().then(function (pdfMake) {
+      return Exporter.pdfBlob(pdfMake, Exporter.workOrderDocDefinition(payload.wo, payload.parts, t, locale, payload.technicians));
+    }).then(function (blob) {
+      var url = URL.createObjectURL(blob);
+      Swal.fire({
+        title: t('js.wo_preview.title', { reference: payload.wo.reference }),
+        html: '<iframe class="pdf-preview" src="' + Core.escapeHtml(url) + '" title="' + Core.escapeHtml(filename) + '"></iframe>',
+        width: 'min(960px, 96vw)',
+        customClass: { popup: 'pdf-preview-popup', actions: 'confirm-actions', confirmButton: 'btn btn--primary', denyButton: 'btn', cancelButton: 'btn btn--ghost' },
+        buttonsStyling: false,
+        showDenyButton: true,
+        showCancelButton: true,
+        showCloseButton: true,
+        confirmButtonText: '<i data-lucide="download"></i>' + Core.escapeHtml(t('js.wo_preview.download')),
+        denyButtonText: '<i data-lucide="printer"></i>' + Core.escapeHtml(t('js.wo_preview.print')),
+        cancelButtonText: Core.escapeHtml(t('js.wo_preview.close')),
+        reverseButtons: true,
+        didOpen: icons,
+        // Impression sans fermer l'aperçu.
+        preDeny: function () {
+          var frame = Swal.getHtmlContainer().querySelector('iframe');
+          try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { window.open(url, '_blank'); }
+          return false;
+        },
+        willClose: function () { setTimeout(function () { URL.revokeObjectURL(url); }, 1000); }
+      }).then(function (res) {
+        if (res.isConfirmed) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        }
+      });
     }).catch(function () { alertError(); });
   });
 

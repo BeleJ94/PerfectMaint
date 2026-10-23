@@ -105,70 +105,216 @@
     };
   }
 
-  /** Bon de travail imprimable d'un OT. */
-  function workOrderDocDefinition(wo, parts, t, locale) {
+  /**
+   * Bon de travail imprimable d'un OT : en-tête avec référence et statut, fiches engin / intervention,
+   * description, travaux réalisés, intervenants, pièces chiffrées, signatures, pied de page paginé.
+   * @param {Array} [technicians] intervenants (nom, métier, minutes)
+   */
+  function workOrderDocDefinition(wo, parts, t, locale, technicians) {
     var d = function (v, time) { return Core.formatDate(v, locale, time) || '—'; };
     var n = function (v, dec) { return Core.formatNumber(v, locale, dec); };
-    var info = [
-      [t('fields.equipment_id'), wo.equipment_code + ' – ' + wo.equipment_name],
-      [t('fields.site_id'), wo.site],
-      [t('fields.type'), t('wo_type.' + wo.type)],
-      [t('fields.priority'), t('priority.' + wo.priority)],
-      [t('fields.status'), t('wo_status.' + wo.status)],
-      [t('fields.reported_by'), (wo.reporter || '—') + ' · ' + d(wo.reported_at, true)],
-      [t('fields.assigned_to'), wo.assignee || '—'],
-      [t('fields.due_date'), d(wo.due_date)],
-      [t('fields.completed_at'), d(wo.completed_at, true)],
-      [t('fields.labor_minutes'), wo.labor_minutes !== null && wo.labor_minutes !== undefined ? wo.labor_minutes + ' min' : '—']
-    ].map(function (r) { return [{ text: r[0], style: 'label' }, String(r[1])]; });
+    var GREY = '#5B6573';
+    var LINE = '#D5DBE3';
+    var SOFT = '#F3F6F9';
+    var STATUS_COLORS = { open: '#B54708', in_progress: '#1F4E79', waiting_part: '#B54708', done: '#067647', cancelled: '#5E6166' };
+    var PRIORITY_COLORS = { critical: '#B42318', high: '#B54708', medium: '#1F4E79', low: '#5E6166' };
 
+    // Tableau sans bordures verticales, filets fins, en-tête accentué, lignes alternées.
+    var tableLayout = {
+      hLineWidth: function (i, node) { return i === 0 || i === node.table.body.length ? 0 : 0.5; },
+      vLineWidth: function () { return 0; },
+      hLineColor: function () { return LINE; },
+      fillColor: function (row, node) { return row > 0 && row % 2 === 0 && row < node.table.body.length ? SOFT : null; },
+      paddingTop: function () { return 4; },
+      paddingBottom: function () { return 4; }
+    };
+    var boxLayout = {
+      hLineWidth: function () { return 0.5; }, vLineWidth: function () { return 0.5; },
+      hLineColor: function () { return LINE; }, vLineColor: function () { return LINE; },
+      paddingLeft: function () { return 8; }, paddingRight: function () { return 8; },
+      paddingTop: function () { return 6; }, paddingBottom: function () { return 6; }
+    };
+
+    function section(title) {
+      return {
+        margin: [0, 14, 0, 6],
+        table: { widths: ['*'], body: [[{ text: title.toUpperCase(), bold: true, fontSize: 8.5, color: '#FFFFFF', fillColor: ACCENT, characterSpacing: 0.6 }]] },
+        layout: { hLineWidth: function () { return 0; }, vLineWidth: function () { return 0; }, paddingLeft: function () { return 6; }, paddingTop: function () { return 3; }, paddingBottom: function () { return 3; } }
+      };
+    }
+
+    function card(title, rows) {
+      return {
+        table: {
+          widths: [78, '*'],
+          body: [[{ text: title.toUpperCase(), colSpan: 2, bold: true, fontSize: 8, color: ACCENT, characterSpacing: 0.6, fillColor: SOFT }, '']]
+            .concat(rows.map(function (r) { return [{ text: r[0], color: GREY, fontSize: 8 }, { text: String(r[1]), bold: !!r[2], color: r[3] || '#1D2733' }]; }))
+        },
+        layout: boxLayout
+      };
+    }
+
+    // Zone à remplir à la main si l'information manque (bon imprimé avant intervention).
+    function textOrLines(text, lines) {
+      if (text) return { text: text, lineHeight: 1.25 };
+      return { stack: [{ text: '—', color: GREY }].concat(Array.apply(null, Array(lines)).map(function () {
+        return { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.5, lineColor: LINE }], margin: [0, 16, 0, 0] };
+      })) };
+    }
+
+    var meters = [];
+    if (wo.hour_meter !== null && wo.hour_meter !== undefined) meters.push(n(wo.hour_meter, 0) + ' h');
+    else if (wo.equipment_hour_meter !== null && wo.equipment_hour_meter !== undefined) meters.push(n(wo.equipment_hour_meter, 0) + ' h');
+    if (wo.odometer_km !== null && wo.odometer_km !== undefined) meters.push(n(wo.odometer_km, 0) + ' km');
+    else if (wo.equipment_odometer !== null && wo.equipment_odometer !== undefined) meters.push(n(wo.equipment_odometer, 0) + ' km');
+
+    var labor = wo.labor_minutes !== null && wo.labor_minutes !== undefined ? wo.labor_minutes + ' min' : '—';
+
+    var header = {
+      columns: [
+        {
+          width: '*',
+          stack: [
+            { text: 'PERFECT LOGISTICS', fontSize: 8, bold: true, color: GREY, characterSpacing: 1.2 },
+            { text: t('js.work_order') + ' ' + wo.reference, fontSize: 17, bold: true, color: ACCENT, margin: [0, 3, 0, 2] },
+            { text: wo.title, fontSize: 11, color: '#1D2733' }
+          ]
+        },
+        {
+          width: 150,
+          table: {
+            widths: ['*'],
+            body: [
+              [{ text: t('wo_status.' + wo.status), alignment: 'center', bold: true, characterSpacing: 0.4, color: '#FFFFFF', fillColor: STATUS_COLORS[wo.status] || ACCENT, fontSize: 9, margin: [0, 2, 0, 2] }],
+              [{ text: t('fields.priority') + ' : ' + t('priority.' + wo.priority), alignment: 'center', bold: true, color: PRIORITY_COLORS[wo.priority] || ACCENT, fontSize: 8.5 }],
+              [{ text: t('js.wo_doc.issued', { date: d(new Date().toISOString().slice(0, 10)) }), alignment: 'center', color: GREY, fontSize: 7.5 }]
+            ]
+          },
+          layout: boxLayout
+        }
+      ]
+    };
+
+    var content = [
+      header,
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 2, lineColor: ACCENT }], margin: [0, 10, 0, 12] },
+      {
+        columns: [
+          card(t('js.wo_doc.equipment'), [
+            [t('fields.code'), wo.equipment_code, true],
+            [t('fields.name'), wo.equipment_name],
+            [t('fields.site_id'), wo.site],
+            [t('js.wo_doc.meters'), meters.join(' · ') || '—']
+          ]),
+          card(t('js.wo_doc.intervention'), [
+            [t('fields.type'), t('wo_type.' + wo.type), true],
+            [t('fields.reported_by'), (wo.reporter || '—') + ' · ' + d(wo.reported_at, true)],
+            [t('fields.assigned_to'), wo.assignee || '—'],
+            [t('fields.due_date'), d(wo.due_date)],
+            [t('fields.completed_at'), d(wo.completed_at, true)],
+            [t('fields.labor_minutes'), labor, true]
+          ])
+        ],
+        columnGap: 12
+      },
+      section(t('fields.description')),
+      textOrLines(wo.description, 2),
+      section(t('fields.resolution')),
+      textOrLines(wo.resolution, 4)
+    ];
+
+    if (wo.failure_cause) {
+      content.push({ text: [{ text: t('fields.failure_cause') + ' : ', color: GREY }, { text: t('cause.' + wo.failure_cause), bold: true }], margin: [0, 6, 0, 0] });
+    }
+
+    // Intervenants
+    if (technicians && technicians.length) {
+      var minutes = 0;
+      content.push(section(t('js.wo_doc.technicians')));
+      content.push({
+        table: {
+          headerRows: 1,
+          widths: ['*', 120, 70],
+          body: [[t('fields.name'), t('js.wo_doc.job'), t('fields.minutes')].map(function (h, i) { return { text: h, style: 'th', alignment: i === 2 ? 'right' : 'left' }; })]
+            .concat(technicians.map(function (p) {
+              minutes += Number(p.minutes) || 0;
+              return [p.name, p.job ? t('job.' + p.job) : '—', { text: p.minutes ? n(p.minutes, 0) + ' min' : '—', alignment: 'right' }];
+            }))
+            .concat([[{ text: t('js.total'), bold: true, colSpan: 2 }, '', { text: n(minutes, 0) + ' min', bold: true, alignment: 'right' }]])
+        },
+        layout: tableLayout
+      });
+    }
+
+    // Pièces et consommables
     var total = 0;
     var partRows = (parts || []).map(function (p) {
       var line = Number(p.quantity) * Number(p.unit_cost);
       total += line;
-      return [p.reference, p.name, n(p.quantity) + ' ' + p.unit, Core.formatMoney(p.unit_cost, locale), Core.formatMoney(line, locale)];
+      return [
+        { text: p.reference, color: GREY },
+        p.name,
+        { text: n(p.quantity) + ' ' + p.unit, alignment: 'right' },
+        { text: Core.formatMoney(p.unit_cost, locale), alignment: 'right' },
+        { text: Core.formatMoney(line, locale), alignment: 'right' }
+      ];
     });
-
-    var content = [
-      { text: t('js.work_order') + ' ' + wo.reference, style: 'title' },
-      { text: wo.title, fontSize: 11, margin: [0, 0, 0, 10] },
-      { table: { widths: [130, '*'], body: info }, layout: 'noBorders' },
-      { text: t('fields.description'), style: 'h2' },
-      { text: wo.description || '—' },
-      { text: t('fields.resolution'), style: 'h2' },
-      { text: wo.resolution || '\n\n\n' }
-    ];
-    content.push({ text: t('js.parts_used'), style: 'h2' });
+    content.push(section(t('js.parts_used')));
     if (partRows.length) {
       content.push({
         table: {
           headerRows: 1,
-          widths: [80, '*', 60, 60, 60],
+          widths: [80, '*', 60, 70, 75],
           body: [[t('fields.reference'), t('fields.name'), t('fields.quantity'), t('fields.unit_cost'), t('js.total')]
-            .map(function (h) { return { text: h, style: 'th' }; })]
+            .map(function (h, i) { return { text: h, style: 'th', alignment: i >= 2 ? 'right' : 'left' }; })]
             .concat(partRows)
-            .concat([[{ text: t('js.total'), bold: true, colSpan: 4 }, '', '', '', { text: Core.formatMoney(total, locale), bold: true }]])
+            .concat([[{ text: t('js.wo_doc.parts_total'), bold: true, colSpan: 4, alignment: 'right' }, '', '', '',
+              { text: Core.formatMoney(total, locale), bold: true, alignment: 'right', color: ACCENT }]])
         },
-        layout: 'lightHorizontalLines'
+        layout: tableLayout
       });
     } else {
-      content.push({ text: '—' });
+      content.push({ text: '—', color: GREY });
+    }
+
+    // Signatures : nom, date et visa de chaque partie.
+    function signature(title) {
+      return {
+        table: {
+          widths: ['*'],
+          heights: [12, 14, 14, 46],
+          body: [
+            [{ text: title.toUpperCase(), bold: true, fontSize: 7.5, color: ACCENT, characterSpacing: 0.5, fillColor: SOFT }],
+            [{ text: t('js.wo_doc.sign_name'), fontSize: 7.5, color: GREY }],
+            [{ text: t('js.wo_doc.sign_date'), fontSize: 7.5, color: GREY }],
+            [{ text: t('js.wo_doc.sign_visa'), fontSize: 7.5, color: GREY }]
+          ]
+        },
+        layout: boxLayout
+      };
     }
     content.push({
-      margin: [0, 30, 0, 0],
-      columns: [
-        { text: t('js.signature_tech') + '\n\n\n______________________', fontSize: 9 },
-        { text: t('js.signature_manager') + '\n\n\n______________________', fontSize: 9 }
-      ]
+      margin: [0, 20, 0, 0],
+      unbreakable: true,
+      columns: [signature(t('js.signature_tech')), signature(t('js.signature_manager')), signature(t('js.wo_doc.sign_reception'))],
+      columnGap: 10
     });
 
     return {
       pageSize: 'A4',
-      pageMargins: [36, 36, 36, 40],
-      defaultStyle: { fontSize: 9 },
+      pageMargins: [36, 36, 36, 46],
+      info: { title: t('js.work_order') + ' ' + wo.reference, author: 'PerfectMaint', subject: wo.title },
+      defaultStyle: { fontSize: 9, color: '#1D2733' },
       styles: pdfStyles(),
-      footer: function () {
-        return { text: 'PerfectMaint · ' + wo.reference, alignment: 'center', fontSize: 7, color: '#5B6573' };
+      footer: function (current, count) {
+        return {
+          margin: [36, 12, 36, 0],
+          columns: [
+            { text: 'PerfectMaint · ' + wo.reference + ' · ' + wo.site, fontSize: 7, color: GREY },
+            { text: t('js.wo_doc.editor'), fontSize: 7, color: GREY, alignment: 'center' },
+            { text: current + ' / ' + count, fontSize: 7, color: GREY, alignment: 'right' }
+          ]
+        };
       },
       content: content
     };
@@ -777,6 +923,11 @@
     pdfMake.createPdf(pdfSafe(doc)).download(filename);
   }
 
+  /** PDF généré en Blob (aperçu dans une modale avant téléchargement ou impression). */
+  function pdfBlob(pdfMake, doc) {
+    return new Promise(function (resolve) { pdfMake.createPdf(pdfSafe(doc)).getBlob(resolve); });
+  }
+
   // --- Navigateur -----------------------------------------------------------
 
   function saveBlob(blob, filename) {
@@ -820,6 +971,7 @@
     exportPdf: exportPdf,
     pdfSafe: pdfSafe,
     downloadPdf: downloadPdf,
+    pdfBlob: pdfBlob,
     planningMatrix: planningMatrix,
     buildPlanningWorkbook: buildPlanningWorkbook,
     planningDocDefinition: planningDocDefinition,
