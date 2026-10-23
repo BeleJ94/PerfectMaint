@@ -1,11 +1,13 @@
 <?php
 /**
- * Rapport de saisie d'une journée : consultation seule, aucun champ de saisie.
+ * Rapport de saisie d'une journée : les relevés existants sont en consultation seule ;
+ * un jour passé, les engins non relevés peuvent être rattrapés (un seul relevé par engin et par jour).
  * @var array $report  @var array $sites  @var int|null $siteId  @var \DateTimeImmutable $date  @var \DateTimeImmutable $today
  */
-$view->share('pageScripts', ['js/entry.js']);
+$view->share('pageScripts', ['js/pm-fuel.js', 'js/entry.js']);
 $iso = $date->format('Y-m-d');
 $isToday = $date == $today;
+$canBackfill = !$isToday;
 $readCount = count($report['read']);
 $delta = static function (?int $value, string $unit): string {
     if ($value === null) {
@@ -34,7 +36,7 @@ $delta = static function (?int $value, string $unit): string {
         </div>
         <div class="meter meter--good"><span style="width: <?= e($report['total'] > 0 ? round($readCount / $report['total'] * 100) : 0) ?>%"></span></div>
     </div>
-    <p class="entry-readonly"><i data-lucide="eye"></i><?= e(t('entry.read_only')) ?></p>
+    <p class="entry-readonly"><i data-lucide="<?= $canBackfill ? 'calendar-plus' : 'eye' ?>"></i><?= e(t($canBackfill ? 'entry.backfill_hint' : 'entry.read_only')) ?></p>
 </div>
 
 <?php if ($report['total'] === 0): ?>
@@ -76,11 +78,19 @@ $delta = static function (?int $value, string $unit): string {
 
 <?php if ($report['missing'] !== []): ?>
     <h2 class="entry-section"><?= e(t('entry.report_missing')) ?> <span><?= e(count($report['missing'])) ?></span></h2>
-    <ul class="entry-missing">
-        <?php foreach ($report['missing'] as $row): ?>
-            <li><strong><?= e($row['code']) ?></strong><span class="muted small"><?= e($row['label']) ?> · <?= e($row['site']) ?></span></li>
-        <?php endforeach; ?>
-    </ul>
+    <?php if ($canBackfill): ?>
+        <div class="entry-list">
+            <?php foreach ($report['missing'] as $row): ?>
+                <?= $view->partial('entry/_backfill', ['row' => $row, 'date' => $iso]) ?>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <ul class="entry-missing">
+            <?php foreach ($report['missing'] as $row): ?>
+                <li><strong><?= e($row['code']) ?></strong><span class="muted small"><?= e($row['label']) ?> · <?= e($row['site']) ?></span></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
 <?php elseif ($report['total'] > 0): ?>
     <p class="entry-all-done"><i data-lucide="check-circle-2"></i><?= e(t('entry.report_complete')) ?></p>
 <?php endif; ?>

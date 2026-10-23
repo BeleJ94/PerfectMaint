@@ -18,6 +18,7 @@ enum Role: string
 
     private const PERMISSIONS = [
         'meters.entry' => ['admin', 'manager', 'technician', 'encoder'],
+        'readings.manage' => ['admin'],
         'dashboard.view' => ['admin', 'manager', 'technician', 'viewer'],
         'equipment.view' => ['admin', 'manager', 'technician', 'viewer'],
         'equipment.manage' => ['admin', 'manager'],

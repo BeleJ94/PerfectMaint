@@ -231,7 +231,7 @@
     var method = (form.getAttribute('method') || 'get').toLowerCase();
     if (form.dataset.confirmed === '1' || method !== 'post' || form.hasAttribute('data-no-confirm')
       || NO_CONFIRM.test((form.getAttribute('action') || '').split('?')[0])) return;
-    if ($(form).is('[data-entry-form]')) return; // saisie de l'encodeur : confirmée par entry.js avant l'envoi AJAX
+    if ($(form).is('[data-entry-form], [data-backfill-form]')) return; // saisie de l'encodeur : confirmée par entry.js avant l'envoi AJAX
     e.preventDefault();
     var submitter = e.originalEvent && e.originalEvent.submitter;
     confirmSubmit(form, { submitter: submitter }).then(function (ok) {

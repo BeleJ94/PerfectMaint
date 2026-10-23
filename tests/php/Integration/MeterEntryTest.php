@@ -106,20 +106,22 @@ final class MeterEntryTest extends DatabaseTestCase
         self::assertStringNotContainsString('KIN-01', $this->http($both, 'GET', "/saisie?site_id=$other")->body);
     }
 
-    public function testReportOfAPastDayIsReadOnly(): void
+    public function testReportOfAPastDayKeepsReadingsReadOnly(): void
     {
         $this->db->execute(
             'INSERT INTO meter_readings (equipment_id, hour_meter, recorded_at) VALUES (:e, 980, :at)',
             ['e' => $this->equipment, 'at' => date('Y-m-d 07:00:00', strtotime('-2 days'))]
         );
-        $this->createEquipment($this->kamao, 'KAM-02');
+        $missing = $this->createEquipment($this->kamao, 'KAM-02');
         $yesterday = date('Y-m-d', strtotime('-1 day'));
 
         $page = $this->http($this->session, 'GET', "/saisie/rapport?date=$yesterday");
         self::assertSame(200, $page->status);
         self::assertStringContainsString('value="' . $yesterday . '"', $page->body);
         self::assertMatchesRegularExpression('/KAM-01.*\+20 h.*KAM-02/s', $page->body, 'Relevé de la veille avec son écart, puis engin non relevé');
-        self::assertStringNotContainsString('name="hour_meter"', $page->body, 'Aucun champ de saisie');
+        self::assertSame(1, substr_count($page->body, 'data-backfill-form'), 'Rattrapage proposé pour l\'engin non relevé uniquement');
+        self::assertStringContainsString("/saisie/$missing/jour", $page->body);
+        self::assertStringNotContainsString('data-backfill-form', $this->http($this->session, 'GET', '/saisie/rapport')->body, 'Pas de rattrapage le jour même');
         self::assertStringNotContainsString('data-entry-form', $page->body);
         self::assertSame(1000, $this->hours());
 

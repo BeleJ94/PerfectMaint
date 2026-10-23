@@ -67,6 +67,8 @@ final class MeterEntryRepository extends Repository
 
         return $this->db->fetchAll(
             "SELECT e.id, e.code, e.name, e.brand, e.model, s.name AS site,
+                    COALESCE(e.meter_basis, c.meter_basis, 'hours') AS meter_basis, e.hour_meter AS current_hours, e.odometer_km AS current_km,
+                    g.kind AS fuel_kind, g.marks AS fuel_marks, COALESCE(e.tank_capacity_l, em.tank_capacity_l) AS tank_capacity,
                     d.recorded_at, d.recorded_by, d.hour_meter, d.odometer_km, d.fuel_level, d.note,
                     CONCAT(u.first_name, ' ', u.last_name) AS recorded_by_name,
                     (SELECT COUNT(*) FROM meter_readings r WHERE r.equipment_id = e.id AND $isIndex
@@ -77,6 +79,9 @@ final class MeterEntryRepository extends Repository
                         AND r.recorded_at < :from3 ORDER BY r.recorded_at DESC, r.id DESC LIMIT 1) AS prev_km
                FROM equipment e
                JOIN sites s ON s.id = e.site_id
+               LEFT JOIN equipment_categories c ON c.id = e.category_id
+               LEFT JOIN equipment_models em ON em.id = e.model_id
+               LEFT JOIN fuel_gauges g ON g.id = COALESCE(e.fuel_gauge_id, em.fuel_gauge_id)
                LEFT JOIN meter_readings d ON d.id = (
                     SELECT r.id FROM meter_readings r
                      WHERE r.equipment_id = e.id AND $isIndex AND r.recorded_at BETWEEN :from4 AND :to2

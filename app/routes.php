@@ -12,6 +12,7 @@ use App\Controllers\FieldController;
 use App\Controllers\ManagementController;
 use App\Controllers\MeterController;
 use App\Controllers\MeterEntryController;
+use App\Controllers\MeterReadingController;
 use App\Controllers\NotificationController;
 use App\Controllers\PartController;
 use App\Controllers\PreventiveController;
@@ -105,6 +106,14 @@ return static function (Router $r): void {
     $r->get('/saisie/supervision/data', [MeterEntryController::class, 'supervisionData'], ['permission' => 'meters.entry']);
     $r->get('/saisie/supervision/{id}/series', [MeterEntryController::class, 'supervisionSeries'], ['permission' => 'meters.entry']);
     $r->post('/saisie/{id}', [MeterEntryController::class, 'save'], ['permission' => 'meters.entry']);
+    $r->post('/saisie/{id}/jour', [MeterEntryController::class, 'backfill'], ['permission' => 'meters.entry']);
+
+    // Répertoire général des index (administrateur) : modification et suppression des relevés
+    $r->get('/readings', [MeterReadingController::class, 'index'], ['permission' => 'readings.manage']);
+    $r->get('/readings/data', [MeterReadingController::class, 'data'], ['permission' => 'readings.manage']);
+    $r->get('/readings/{id}/edit', [MeterReadingController::class, 'edit'], ['permission' => 'readings.manage']);
+    $r->post('/readings/{id}', [MeterReadingController::class, 'update'], ['permission' => 'readings.manage']);
+    $r->post('/readings/{id}/delete', [MeterReadingController::class, 'delete'], ['permission' => 'readings.manage']);
 
     // Pièces détachées
     $r->get('/parts', [PartController::class, 'index'], ['permission' => 'parts.view']);

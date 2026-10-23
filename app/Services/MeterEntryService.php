@@ -67,6 +67,10 @@ final class MeterEntryService
         foreach ($this->entries->report($date->format('Y-m-d'), $siteId) as $row) {
             $row['label'] = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: $row['name'];
             if ($row['recorded_at'] === null) {
+                // Champs du rattrapage : mêmes règles que la feuille du jour (compteur de suivi en premier).
+                $row['km_first'] = $row['meter_basis'] === 'km';
+                $row['has_hours'] = !$row['km_first'] || $row['current_hours'] !== null;
+                $row['has_km'] = $row['km_first'] || $row['current_km'] !== null;
                 $missing[] = $row;
                 continue;
             }

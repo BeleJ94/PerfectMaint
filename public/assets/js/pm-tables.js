@@ -222,6 +222,28 @@
         ]
       },
 
+      // Répertoire général des index (administrateur) : un clic sur la ligne ouvre la modification
+      readings: {
+        order: [[0, 'desc']],
+        columns: [
+          { data: 'recorded_at', title: t('js.date'), className: 'nowrap', text: function (r) { return dateTime(r.recorded_at); } },
+          { data: 'code', title: t('fields.equipment_id'), html: function (r) {
+            return '<strong>' + esc(r.code) + '</strong><br><span class="muted">' + esc(r.equipment_name) + '</span>';
+          }, text: function (r) { return r.code + ' – ' + r.equipment_name; } },
+          { data: 'site', title: t('fields.site_id') },
+          { data: 'hour_meter', title: t('fields.hour_meter'), className: 'dt-right',
+            text: function (r) { return r.hour_meter === null ? '' : num(r.hour_meter, 0); } },
+          { data: 'odometer_km', title: t('fields.odometer_km'), className: 'dt-right',
+            text: function (r) { return r.odometer_km === null ? '' : num(r.odometer_km, 0); } },
+          { data: 'fuel_level', title: t('fields.fuel_level'), className: 'dt-right', text: function (r) {
+            if (r.fuel_level === null) return '';
+            return r.fuel_liters !== null ? num(r.fuel_liters, 1) + ' L (' + r.fuel_level + ' %)' : r.fuel_level + ' %';
+          } },
+          { data: 'recorded_by_name', title: t('js.user'), text: function (r) { return r.recorded_by_name || ''; } },
+          { data: 'note', title: t('fields.note'), orderable: false, text: function (r) { return r.note || ''; } }
+        ]
+      },
+
       activity: {
         order: [[0, 'desc']],
         columns: [
@@ -253,6 +275,7 @@
       procurement: { quantity: { type: 'qty' }, monthly: { type: 'qty', blankZero: true }, coverage_days: { type: 'int', unit: days },
         suggested: { type: 'qty', blankZero: true }, order_value: { type: 'money', blankZero: true } },
       users: { last_login_at: { type: 'datetime' } },
+      readings: { recorded_at: { type: 'datetime' }, hour_meter: { type: 'int', unit: 'h' }, odometer_km: { type: 'int', unit: 'km' } },
       activity: { created_at: { type: 'datetime' } }
     };
     Object.keys(XL).forEach(function (name) {

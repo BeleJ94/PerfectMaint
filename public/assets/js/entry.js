@@ -10,6 +10,49 @@
   // Rapport de saisie : le choix d'une date recharge la page (les listes déroulantes le font déjà).
   $(document).on('change', 'input[data-autosubmit]', function () { if (this.value) this.form.submit(); });
 
+  // Rapport d'un jour passé : rattrapage d'un engin non relevé ; la page est rechargée une fois le relevé enregistré.
+  function backfill($form, confirmed) {
+    var $button = $form.find('button[type=submit]');
+    $form.find('[data-entry-error]').prop('hidden', true);
+    $button.prop('disabled', true);
+    $.post($form.attr('action'), $form.serialize() + (confirmed ? '&confirm=1' : ''))
+      .done(function (json) {
+        Swal.fire({ toast: true, position: 'top', icon: 'success', title: json.message, showConfirmButton: false, timer: 1200 })
+          .then(function () { window.location.reload(); });
+      })
+      .fail(function (xhr) {
+        $button.prop('disabled', false);
+        var json = xhr.responseJSON || {};
+        if (xhr.status === 409 && json.confirm) {
+          Swal.fire({
+            icon: 'warning', title: t('js.entry.check'), text: json.confirm, showCancelButton: true, reverseButtons: true,
+            confirmButtonText: t('js.entry.confirm'), cancelButtonText: t('js.entry.fix'), confirmButtonColor: '#1F4E79'
+          }).then(function (res) { if (res.isConfirmed) backfill($form, true); });
+        } else if (xhr.status === 401) {
+          window.location.reload();
+        } else {
+          var message = json.errors ? Object.keys(json.errors).map(function (k) { return json.errors[k]; }).join(' ') : (json.error || t('js.entry.offline'));
+          $form.find('[data-entry-error]').text(message).prop('hidden', false);
+        }
+      });
+  }
+  $(document).on('submit', '[data-backfill-form]', function (e) {
+    e.preventDefault();
+    var $form = $(this);
+    window.PM.confirmSubmit(this, {
+      title: t('js.entry.backfill_title', { code: $form.closest('[data-entry-card]').find('.entry-card__head strong').first().text() }),
+      kind: 'save',
+      confirmLabel: t('js.entry.confirm_ok')
+    }).then(function (ok) { if (ok) backfill($form, false); });
+  });
+
+  // Carte repliée : le formulaire ne s'ouvre qu'à la demande (correction, nouveau relevé ou rattrapage).
+  $(document).on('click', '[data-entry-edit]', function () {
+    var $form = $(this).closest('[data-entry-card]').find('[data-entry-form], [data-backfill-form]');
+    $(this).prop('hidden', true);
+    $form.prop('hidden', false).find('input[type=number]').first().trigger('focus').trigger('select');
+  });
+
   var $todo = $('[data-entry-todo]');
   var $done = $('[data-entry-done-list]');
   if (!$todo.length) return;
@@ -92,13 +135,6 @@
       if (ok) submit($form, false);
       else $form.find('input[type=number]').first().trigger('focus');
     });
-  });
-
-  // Carte déjà relevée : le formulaire ne s'ouvre qu'à la demande (correction ou nouveau relevé).
-  $(document).on('click', '[data-entry-edit]', function () {
-    var $form = $(this).closest('[data-entry-card]').find('[data-entry-form]');
-    $(this).prop('hidden', true);
-    $form.prop('hidden', false).find('input[type=number]').first().trigger('focus').trigger('select');
   });
 
   function applySearch() {

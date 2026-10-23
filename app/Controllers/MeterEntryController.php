@@ -10,6 +10,7 @@ use App\Domain\MeterForecast;
 use App\Repositories\SiteRepository;
 use App\Services\MeterEntryService;
 use App\Services\MeterMonitorService;
+use App\Services\MeterReadingService;
 use DateTimeImmutable;
 
 /**
@@ -26,6 +27,7 @@ final class MeterEntryController extends Controller
         private readonly MeterEntryService $entries,
         private readonly SiteRepository $sites,
         private readonly MeterMonitorService $monitor,
+        private readonly MeterReadingService $readings,
     ) {
         parent::__construct($ctx);
     }
@@ -71,7 +73,10 @@ final class MeterEntryController extends Controller
         ], 200, 'layouts/entry');
     }
 
-    /** Rapport de saisie d'une journée : ce qui a été relevé, par qui, et ce qui ne l'a pas été. Aucune modification possible. */
+    /**
+     * Rapport de saisie d'une journée : ce qui a été relevé, par qui, et ce qui ne l'a pas été.
+     * Les relevés existants ne sont pas modifiables ; un jour passé, les engins non relevés peuvent être rattrapés.
+     */
     public function report(Request $request): Response
     {
         $sites = $this->sites->listActive();
@@ -107,6 +112,25 @@ final class MeterEntryController extends Controller
             'message' => t('flash.reading_saved'),
             'html' => $this->ctx->view->partial('entry/_card', ['row' => $this->entries->row($id)]),
         ]);
+    }
+
+    /**
+     * Rattrapage d'un jour passé, depuis le rapport de saisie : seulement si l'engin n'a aucun relevé ce jour-là.
+     * Un écart anormal renvoie d'abord une demande de confirmation (409).
+     */
+    public function backfill(Request $request, array $params): Response
+    {
+        $id = $this->id($params);
+        $date = MeterReadingService::pastDay($request->input('date'));
+        if ($request->input('confirm') === null) {
+            $warning = $this->readings->backfillWarning($id, $date, $request->body);
+            if ($warning !== null) {
+                return $this->json(['ok' => false, 'confirm' => $warning], 409);
+            }
+        }
+        $this->readings->backfill($id, $date, $request->body);
+
+        return $this->json(['ok' => true, 'message' => t('flash.reading_saved')]);
     }
 
     /**

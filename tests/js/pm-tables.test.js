@@ -19,6 +19,7 @@ const REPOSITORIES = {
   personnel: 'PersonnelRepository',
   sites: 'SiteRepository',
   users: 'UserRepository',
+  readings: 'MeterReadingRepository',
   activity: 'ActivityLogRepository'
 };
 
@@ -57,6 +58,7 @@ test('le rendu HTML échappe les données utilisateur', () => {
     personnel: { first_name: evil, last_name: evil, employee_no: evil, job: 'driver', site: evil, team: evil, shift: 'night', phone: evil, equipment: evil, is_active: 1 },
     sites: { code: evil, name: evil, city: evil },
     users: { name: evil, email: evil, role: 'technician', sites: evil },
+    readings: { code: evil, equipment_name: evil, site: evil, hour_meter: 1, odometer_km: null, fuel_level: 50, fuel_liters: 40, recorded_by_name: evil, note: evil },
     activity: { user_name: evil, site: evil, entity_type: 'equipment', action: 'update', summary: evil,
       before_data: JSON.stringify({ name: evil }), after_data: JSON.stringify({ name: 'ok' }) }
   };

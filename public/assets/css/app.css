@@ -1575,3 +1575,30 @@ body.cmdk-open { overflow: hidden; }
 .entry-fuel__preview { display: flex; align-items: center; gap: 6px; margin: 0; font-size: .8125rem; }
 .entry-fuel__preview [data-lucide] { width: 14px; height: 14px; flex-shrink: 0; }
 @media (max-width: 360px) { .entry-field .input { font-size: 1.05rem; padding: 0 6px; } }
+
+/* ---------- Filtre par engin (recherche dynamique) ---------- */
+.eq-filter { position: relative; min-width: 240px; }
+.eq-filter__box { position: relative; display: flex; align-items: center; }
+.eq-filter__box > svg, .eq-filter__box > i { position: absolute; left: 8px; width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; }
+.eq-filter__box .input { width: 100%; padding-left: 28px !important; padding-right: 28px !important; }
+.eq-filter__clear { position: absolute; right: 4px; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 99px; background: none; color: var(--text-muted); cursor: pointer; }
+.eq-filter__clear:hover { background: var(--accent-soft); color: var(--text); }
+.eq-filter__clear svg { width: 14px; height: 14px; }
+.eq-filter__list { position: absolute; z-index: 30; top: 100%; left: 0; right: 0; min-width: 320px; max-height: 320px; overflow-y: auto; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.eq-filter__list li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: 6px 8px; border-radius: calc(var(--radius) - 2px); font-size: .8125rem; cursor: pointer; }
+.eq-filter__list li span { min-width: 0; }
+.eq-filter__list li small { display: block; color: var(--text-muted); font-size: .6875rem; }
+.eq-filter__list li.is-active { background: var(--accent-soft); }
+.eq-filter__list mark { background: none; color: var(--accent); font-weight: 700; }
+.eq-filter__list .eq-filter__empty { color: var(--text-muted); cursor: default; }
+
+/* ---------- Répertoire des index : modale d'un relevé ---------- */
+table.dataTable tbody tr.row-modal { cursor: pointer; }
+table.dataTable tbody tr.row-modal:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.reading-popup { text-align: left; }
+.reading-popup .dialog-title { margin: 0 0 var(--space-3); font-size: 1.125rem; }
+.reading-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-4); padding: var(--space-3); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); font-size: .8125rem; }
+.reading-details dt { font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.reading-details dd { margin: 0; }
+.reading-form .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.reading-form .field { display: grid; gap: 4px; text-align: left; }
