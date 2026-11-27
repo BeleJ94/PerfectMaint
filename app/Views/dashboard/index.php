@@ -63,6 +63,7 @@ $availClass = $eq['availability'] === null ? '' : ($eq['availability'] >= 85 ? '
         <div class="kpi__value"><?= e($stats['meters']['due'] + $stats['meters']['soon']) ?></div>
         <div class="kpi__hint"><?= e(t('dashboard.meters_hint', ['read' => $stats['meters']['read_today'], 'total' => $stats['meters']['equipment']])) ?></div>
     </a>
+    <?php if ($currentUser->can('parts.view')): /* stock : réservé aux profils qui voient les pièces */ ?>
     <button type="button" class="kpi kpi--button<?= $stats['parts_below_min'] > 0 ? ' kpi--alert' : '' ?>"<?= drill('procurement', '/procurement/data', t('dashboard.parts_low'), $sp(['level' => 'action']), '/procurement', '/parts/{id}', [
         ['label' => t('procurement.to_act'), 'params' => ['level' => 'action']],
         ['label' => t('level.out'), 'params' => ['level' => 'out']],
@@ -73,6 +74,7 @@ $availClass = $eq['availability'] === null ? '' : ($eq['availability'] >= 85 ? '
         <div class="kpi__value"><?= e($stats['parts_below_min']) ?></div>
         <div class="kpi__hint"><?= e(t('dashboard.parts_low_hint')) ?></div>
     </button>
+    <?php endif; ?>
     <button type="button" class="kpi kpi--button"<?= drill('work_orders', '/work-orders/data', t('dashboard.mttr_drill'), $sp(['closed_days' => 90, 'type' => 'corrective']), '/work-orders', '/work-orders/{id}') ?>>
         <div class="kpi__label"><?= e(t('dashboard.mttr')) ?></div>
         <div class="kpi__value"><?= $wo['mttr_hours'] === null ? '–' : e(format_number($wo['mttr_hours'], 1)) . '<small>h</small>' ?></div>

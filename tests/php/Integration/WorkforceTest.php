@@ -121,6 +121,39 @@ final class WorkforceTest extends DatabaseTestCase
         $this->workforce()->assign($other, ['personnel_id' => $foreignDriver, 'shift' => 'day']);
     }
 
+    public function testDispatcherRunsOperationsButNotMaintenanceOrStock(): void
+    {
+        $csrf = ['_csrf' => str_repeat('a', 64)];
+        $session = Session::memory(['auth_user_id' => $this->createUser('dispatcher', [$this->kamao]), '_csrf_token' => $csrf['_csrf']]);
+        $driver = $this->person('lina', 'driver');
+
+        // Exploitation : équipes, personnel, affectation d'un conducteur, signalement d'une panne, saisie des index.
+        foreach (['/', "/sites/{$this->kamao}", '/alerts', '/planning', '/equipment', "/equipment/{$this->eq1}", '/documents', '/meters',
+            '/work-orders', '/work-orders/create', '/preventive', '/teams', '/teams/create', '/personnel', "/personnel/$driver/edit", '/saisie'] as $path) {
+            self::assertSame(200, $this->http($session, 'GET', $path)->status, $path);
+        }
+        self::assertSame(302, $this->http($session, 'POST', "/equipment/{$this->eq1}/assignments", $csrf + ['personnel_id' => $driver, 'shift' => 'day'])->status);
+        self::assertSame($driver, (int) $this->value('SELECT personnel_id FROM equipment_assignments WHERE equipment_id = :e AND ended_at IS NULL', ['e' => $this->eq1]));
+        self::assertSame(302, $this->http($session, 'POST', '/work-orders', $csrf + ['equipment_id' => $this->eq1, 'title' => 'Fuite hydraulique', 'immobilizing' => '1'])->status);
+        $wo = (int) $this->value('SELECT id FROM work_orders WHERE equipment_id = :e', ['e' => $this->eq1]);
+        self::assertGreaterThan(0, $wo);
+
+        // Ni exécution de la maintenance, ni état des engins, ni stock, ni rapports, ni administration.
+        foreach (['/parts', '/procurement', '/reports', '/terrain', '/activity', '/users', '/catalog', '/equipment/create', '/preventive/create', "/work-orders/$wo/edit"] as $path) {
+            self::assertSame(403, $this->http($session, 'GET', $path)->status, $path);
+        }
+        foreach (["/work-orders/$wo/transition" => ['status' => 'in_progress'], "/equipment/{$this->eq1}/status" => ['status' => 'immobilized'],
+            "/equipment/{$this->eq1}/readings" => ['hour_meter' => 10]] as $path => $body) {
+            self::assertSame(403, $this->http($session, 'POST', $path, $csrf + $body)->status, $path);
+        }
+        // Hors périmètre : un engin d'un autre site reste invisible.
+        self::assertSame(404, $this->http($session, 'GET', '/equipment/' . $this->createEquipment($this->metalkol, 'MET-09'))->status);
+        // Les pages ouvertes ne proposent aucun lien vers le stock.
+        foreach (['/', "/sites/{$this->kamao}", '/alerts', "/equipment/{$this->eq1}"] as $path) {
+            self::assertStringNotContainsString('/procurement', $this->http($session, 'GET', $path)->body, $path);
+        }
+    }
+
     public function testTechnicianCanViewButNotManageOrAssign(): void
     {
         $tech = $this->createUser('technician', [$this->kamao]);

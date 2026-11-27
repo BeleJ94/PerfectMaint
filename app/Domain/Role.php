@@ -15,29 +15,34 @@ enum Role: string
     case Viewer = 'viewer';
     /** Agent de saisie : n'accède qu'à la feuille de saisie des index de ses sites. */
     case Encoder = 'encoder';
+    /**
+     * Responsable dispatch : pilote l'exploitation (équipes par shift, conducteurs, affectations aux engins),
+     * signale les pannes et saisit les index. Ni exécution de la maintenance, ni stock, ni rapports de direction.
+     */
+    case Dispatcher = 'dispatcher';
 
     private const PERMISSIONS = [
-        'meters.entry' => ['admin', 'manager', 'technician', 'encoder'],
+        'meters.entry' => ['admin', 'manager', 'technician', 'encoder', 'dispatcher'],
         'readings.manage' => ['admin'],
-        'dashboard.view' => ['admin', 'manager', 'technician', 'viewer'],
-        'equipment.view' => ['admin', 'manager', 'technician', 'viewer'],
+        'dashboard.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
+        'equipment.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
         'equipment.manage' => ['admin', 'manager'],
         'equipment.status' => ['admin', 'manager', 'technician'],
         'equipment.reading' => ['admin', 'manager', 'technician'],
         'equipment.photo' => ['admin', 'manager', 'technician'],
-        'workorder.view' => ['admin', 'manager', 'technician', 'viewer'],
-        'workorder.create' => ['admin', 'manager', 'technician'],
+        'workorder.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
+        'workorder.create' => ['admin', 'manager', 'technician', 'dispatcher'],
         'workorder.execute' => ['admin', 'manager', 'technician'],
         'workorder.manage' => ['admin', 'manager'],
-        'preventive.view' => ['admin', 'manager', 'technician', 'viewer'],
+        'preventive.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
         'preventive.manage' => ['admin', 'manager'],
         'preventive.delete' => ['admin'],
         'parts.view' => ['admin', 'manager', 'technician', 'viewer'],
         'parts.manage' => ['admin', 'manager'],
         'field.use' => ['admin', 'manager', 'technician'],
-        'personnel.view' => ['admin', 'manager', 'technician', 'viewer'],
-        'personnel.manage' => ['admin', 'manager'],
-        'equipment.assign' => ['admin', 'manager'],
+        'personnel.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
+        'personnel.manage' => ['admin', 'manager', 'dispatcher'],
+        'equipment.assign' => ['admin', 'manager', 'dispatcher'],
         'documents.manage' => ['admin', 'manager'],
         'activity.view' => ['admin', 'manager'],
         'reports.view' => ['admin', 'manager', 'viewer'],

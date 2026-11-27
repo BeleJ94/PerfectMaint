@@ -33,11 +33,13 @@ $docsExpired = count(array_filter($documents, static fn (array $d) => (int) $d['
         <div class="kpi__value"><?= e(count($overuse)) ?></div>
         <div class="kpi__hint"><?= e(t('alerts.overuse_hint', ['factor' => format_number(\App\Repositories\AlertRepository::OVERUSE_FACTOR, 1)])) ?></div>
     </a>
+    <?php if ($currentUser->can('parts.view')): /* stock : réservé aux profils qui voient les pièces */ ?>
     <a class="kpi<?= $stockOut + $stockLow > 0 ? ' kpi--warn' : '' ?>" href="<?= e(url('/procurement', $q)) ?>">
         <div class="kpi__label"><?= e(t('alerts.stock')) ?></div>
         <div class="kpi__value"><?= e($stockOut + $stockLow) ?></div>
         <div class="kpi__hint"><?= e(t('alerts.stock_hint', ['out' => $stockOut, 'low' => $stockLow])) ?></div>
     </a>
+    <?php endif; ?>
     <a class="kpi<?= $docsExpired > 0 ? ' kpi--alert' : ($documents !== [] ? ' kpi--warn' : '') ?>" href="#documents">
         <div class="kpi__label"><?= e(t('documents.to_renew')) ?></div>
         <div class="kpi__value"><?= e(count($documents)) ?></div>
@@ -68,7 +70,7 @@ $docsExpired = count(array_filter($documents, static fn (array $d) => (int) $d['
                 <?php $useKm = $w['interval_hours'] === null || $w['expected_life_hours'] === null; ?>
                 <tr>
                     <td><a href="<?= e(url('/equipment/' . $w['equipment_id'])) ?>"><strong><?= e($w['equipment_code']) ?></strong></a><br><span class="muted small"><?= e(trim($w['brand'] . ' ' . $w['model'])) ?> · <?= e($w['site']) ?></span></td>
-                    <td><a href="<?= e(url('/parts/' . $w['part_id'])) ?>"><?= e($w['reference']) ?></a><br><span class="muted small"><?= e($w['part_name']) ?></span></td>
+                    <td><?php if ($currentUser->can('parts.view')): ?><a href="<?= e(url('/parts/' . $w['part_id'])) ?>"><?= e($w['reference']) ?></a><?php else: ?><?= e($w['reference']) ?><?php endif; ?><br><span class="muted small"><?= e($w['part_name']) ?></span></td>
                     <td class="nowrap"><?= e(format_date($w['created_at'])) ?><br><a class="small" href="<?= e(url('/work-orders/' . $w['work_order_id'])) ?>"><?= e($w['work_order_ref']) ?></a></td>
                     <td class="num nowrap"><?= $useKm ? e(format_number($w['interval_km'])) . ' km' : e(format_number($w['interval_hours'])) . ' h' ?></td>
                     <td class="num nowrap"><?= $useKm ? e(format_number($w['expected_life_km'])) . ' km' : e(format_number($w['expected_life_hours'])) . ' h' ?></td>

@@ -82,11 +82,13 @@ $availClass = $availability === null ? '' : ($availability >= 85 ? 'good' : ($av
         <div class="kpi__value"><?= e(count($contracts)) ?></div>
         <div class="kpi__hint"><?= $contracts !== [] ? e($contracts[0]['code'] . ' · ' . format_date($contracts[0]['contract_end'])) : e(t('site.contracts_hint')) ?></div>
     </button>
+    <?php if ($currentUser->can('parts.view')): /* stock : réservé aux profils qui voient les pièces */ ?>
     <button type="button" class="kpi kpi--button<?= $partsLow > 0 ? ' kpi--alert' : '' ?>"<?= drill('procurement', '/procurement/data', $site['name'] . ' · ' . t('dashboard.parts_low'), $siteQuery + ['level' => 'action'], '/procurement', '/parts/{id}', $stockChips) ?>>
         <div class="kpi__label"><?= e(t('dashboard.parts_low')) ?></div>
         <div class="kpi__value"><?= e($partsLow) ?></div>
         <div class="kpi__hint"><?= e(t('dashboard.parts_low_hint')) ?></div>
     </button>
+    <?php endif; ?>
 </div>
 
 <?php if ($total > 0): ?>

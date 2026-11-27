@@ -1030,6 +1030,7 @@ return [
     'mail.open_app' => 'Ouvrir la supervision des index',
     'mail.alerts_subject' => 'PerfectMaint — :due échéance(s) atteinte(s), :soon à préparer, :count alarme(s)',
     'role.encoder' => 'Encodeur (saisie des index)',
+    'role.dispatcher' => 'Responsable dispatch',
     'nav.meter_entry' => 'Saisie des index',
     'validation.index_required' => 'Saisissez les heures ou le kilométrage.',
     'entry.my_site' => 'Mon site',

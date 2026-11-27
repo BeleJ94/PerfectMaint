@@ -1010,6 +1010,7 @@ return [
     'mail.open_app' => 'Open meter monitoring',
     'mail.alerts_subject' => 'PerfectMaint — :due threshold(s) reached, :soon to prepare, :count alarm(s)',
     'role.encoder' => 'Data entry clerk (meter readings)',
+    'role.dispatcher' => 'Dispatch manager',
     'nav.meter_entry' => 'Meter entry',
     'validation.index_required' => 'Enter the hours or the mileage.',
     'entry.my_site' => 'My site',

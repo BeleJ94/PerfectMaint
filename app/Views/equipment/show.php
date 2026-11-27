@@ -167,6 +167,7 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
             </dl>
         </section>
 
+        <?php if ($currentUser->can('parts.view')): /* pièces et stock : réservés aux profils qui voient les pièces */ ?>
         <section class="card">
             <div class="card__title">
                 <h2><?= e(t('equipment.compatible_parts')) ?> <span class="muted small"><?= e(count($compatibleParts)) ?></span></h2>
@@ -190,6 +191,7 @@ $openWo = count(array_filter($workOrders, static fn (array $w) => in_array($w['s
                 </table></div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
 
         <section class="card">
             <div class="card__title">
