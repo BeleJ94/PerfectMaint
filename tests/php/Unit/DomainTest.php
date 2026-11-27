@@ -152,9 +152,10 @@ final class DomainTest extends TestCase
         self::assertTrue(Role::Viewer->can('equipment.view'));
         self::assertFalse(Role::Viewer->can('unknown.permission'));
 
-        // Responsable dispatch : exploitation (équipes, affectations, signalement, index), rien d'autre.
+        // Responsable dispatch : exploitation (équipes, affectations, index) et gestion complète des entretiens (OT, préventif).
         $dispatch = ['meters.entry', 'dashboard.view', 'equipment.view', 'workorder.view', 'workorder.create',
-            'preventive.view', 'personnel.view', 'personnel.manage', 'equipment.assign'];
+            'workorder.execute', 'workorder.manage', 'preventive.view', 'preventive.manage',
+            'personnel.view', 'personnel.manage', 'equipment.assign', 'equipment.status', 'equipment.reading', 'documents.manage'];
         foreach (Role::permissions() as $permission) {
             self::assertSame(in_array($permission, $dispatch, true), Role::Dispatcher->can($permission), "dispatch : $permission");
         }

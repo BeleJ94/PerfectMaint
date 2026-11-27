@@ -17,7 +17,7 @@ enum Role: string
     case Encoder = 'encoder';
     /**
      * Responsable dispatch : pilote l'exploitation (équipes par shift, conducteurs, affectations aux engins),
-     * signale les pannes et saisit les index. Ni exécution de la maintenance, ni stock, ni rapports de direction.
+     * gère les entretiens de bout en bout (OT et plans préventifs) et saisit les index. Ni stock, ni rapports de direction.
      */
     case Dispatcher = 'dispatcher';
 
@@ -27,15 +27,15 @@ enum Role: string
         'dashboard.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
         'equipment.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
         'equipment.manage' => ['admin', 'manager'],
-        'equipment.status' => ['admin', 'manager', 'technician'],
-        'equipment.reading' => ['admin', 'manager', 'technician'],
+        'equipment.status' => ['admin', 'manager', 'technician', 'dispatcher'],
+        'equipment.reading' => ['admin', 'manager', 'technician', 'dispatcher'],
         'equipment.photo' => ['admin', 'manager', 'technician'],
         'workorder.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
         'workorder.create' => ['admin', 'manager', 'technician', 'dispatcher'],
-        'workorder.execute' => ['admin', 'manager', 'technician'],
-        'workorder.manage' => ['admin', 'manager'],
+        'workorder.execute' => ['admin', 'manager', 'technician', 'dispatcher'],
+        'workorder.manage' => ['admin', 'manager', 'dispatcher'],
         'preventive.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
-        'preventive.manage' => ['admin', 'manager'],
+        'preventive.manage' => ['admin', 'manager', 'dispatcher'],
         'preventive.delete' => ['admin'],
         'parts.view' => ['admin', 'manager', 'technician', 'viewer'],
         'parts.manage' => ['admin', 'manager'],
@@ -43,7 +43,7 @@ enum Role: string
         'personnel.view' => ['admin', 'manager', 'technician', 'viewer', 'dispatcher'],
         'personnel.manage' => ['admin', 'manager', 'dispatcher'],
         'equipment.assign' => ['admin', 'manager', 'dispatcher'],
-        'documents.manage' => ['admin', 'manager'],
+        'documents.manage' => ['admin', 'manager', 'dispatcher'],
         'activity.view' => ['admin', 'manager'],
         'reports.view' => ['admin', 'manager', 'viewer'],
         'sites.manage' => ['admin'],

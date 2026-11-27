@@ -138,14 +138,36 @@ final class WorkforceTest extends DatabaseTestCase
         $wo = (int) $this->value('SELECT id FROM work_orders WHERE equipment_id = :e', ['e' => $this->eq1]);
         self::assertGreaterThan(0, $wo);
 
-        // Ni exécution de la maintenance, ni état des engins, ni stock, ni rapports, ni administration.
-        foreach (['/parts', '/procurement', '/reports', '/terrain', '/activity', '/users', '/catalog', '/equipment/create', '/preventive/create', "/work-orders/$wo/edit"] as $path) {
+        // Gestion complète de l'entretien : modifier, prendre en charge, commenter et clôturer l'OT ; créer un plan préventif.
+        foreach (["/work-orders/$wo", "/work-orders/$wo/edit", '/preventive/create', '/work-orders/assignees?equipment_id=' . $this->eq1] as $path) {
+            self::assertSame(200, $this->http($session, 'GET', $path)->status, $path);
+        }
+        self::assertStringContainsString("/work-orders/$wo/transition", $this->http($session, 'GET', "/work-orders/$wo")->body);
+        foreach (["/work-orders/$wo" => ['equipment_id' => $this->eq1, 'title' => 'Fuite hydraulique vérin', 'priority' => 'high', 'immobilizing' => '1'],
+            "/work-orders/$wo/comments" => ['body' => 'Flexible commandé'],
+            "/work-orders/$wo/transition" => ['status' => 'in_progress'],
+            '/preventive' => ['equipment_id' => $this->eq1, 'title' => 'Vidange', 'interval_days' => 90, 'is_active' => '1']] as $path => $body) {
+            self::assertSame(302, $this->http($session, 'POST', $path, $csrf + $body)->status, $path);
+        }
+        self::assertSame(302, $this->http($session, 'POST', "/work-orders/$wo/transition", $csrf + ['status' => 'done', 'resolution' => 'Flexible remplacé', 'labor_minutes' => 60])->status);
+        self::assertSame(['Fuite hydraulique vérin', 'high', 'done'], array_values($this->row('SELECT title, priority, status FROM work_orders WHERE id = :id', ['id' => $wo])));
+        self::assertSame(1, (int) $this->value('SELECT COUNT(*) FROM preventive_plans WHERE equipment_id = :e', ['e' => $this->eq1]));
+
+        // État manuel d'un engin et relevé depuis sa fiche.
+        self::assertSame(302, $this->http($session, 'POST', "/equipment/{$this->eq2}/status", $csrf + ['status' => 'immobilized', 'reason' => 'Attente conducteur'])->status);
+        self::assertSame(302, $this->http($session, 'POST', "/equipment/{$this->eq2}/readings", $csrf + ['hour_meter' => 150])->status);
+        self::assertSame(['immobilized', 150], array_map(static fn ($v) => is_numeric($v) ? (int) $v : $v, array_values($this->row('SELECT status, hour_meter FROM equipment WHERE id = :id', ['id' => $this->eq2]))));
+
+        // Documents des engins : ajout ouvert au dispatch.
+        self::assertSame(200, $this->http($session, 'GET', '/documents/create')->status);
+        self::assertStringContainsString('/documents/create', $this->http($session, 'GET', '/documents')->body);
+
+        // Ni stock, ni rapports, ni administration, ni création d'engin, ni suppression de plan.
+        $plan = (int) $this->value('SELECT id FROM preventive_plans WHERE equipment_id = :e', ['e' => $this->eq1]);
+        foreach (['/parts', '/procurement', '/reports', '/terrain', '/activity', '/users', '/catalog', '/equipment/create', '/readings'] as $path) {
             self::assertSame(403, $this->http($session, 'GET', $path)->status, $path);
         }
-        foreach (["/work-orders/$wo/transition" => ['status' => 'in_progress'], "/equipment/{$this->eq1}/status" => ['status' => 'immobilized'],
-            "/equipment/{$this->eq1}/readings" => ['hour_meter' => 10]] as $path => $body) {
-            self::assertSame(403, $this->http($session, 'POST', $path, $csrf + $body)->status, $path);
-        }
+        self::assertSame(403, $this->http($session, 'POST', "/preventive/$plan/delete", $csrf)->status);
         // Hors périmètre : un engin d'un autre site reste invisible.
         self::assertSame(404, $this->http($session, 'GET', '/equipment/' . $this->createEquipment($this->metalkol, 'MET-09'))->status);
         // Les pages ouvertes ne proposent aucun lien vers le stock.
